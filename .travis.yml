@@ -5,12 +5,5 @@ rust:
   - beta
   - nightly
 
-before_script:
-  - rustup component add clippy
-
-script:
-  - cargo clippy --verbose
-  - cargo test --verbose
-
 matrix:
   fast_finish: true
