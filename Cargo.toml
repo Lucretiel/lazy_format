@@ -1,0 +1,18 @@
+[package]
+name = "lazy_format"
+version = "1.0.0"
+authors = ["Nathan West <Lucretiel@gmail.com>"]
+edition = "2018"
+readme = "README.md"
+license = "MPL-2.0"
+description = "A utility crate for lazily formatting values for later"
+repository = "https://github.com/Lucretiel/lazy_format"
+categories = [
+	"no-std",
+	"rust-patterns",
+	"value-formatting"
+]
+
+[badges]
+travis-ci = { repository = "Lucretiel/lazy_format" }
+maintenance = { status = "actively-developed" }
