@@ -1,23 +1,55 @@
 #![cfg_attr(not(test), no_std)]
 
+//! lazy_format is a macro which lazily formats its arguments. That is, rather
+//! than immediatly formatting them into a `String` (which is what `format!`)
+//! does, it captures its arguments and returns an opaque struct with a `Display`
+//! implementation, so that the actual formatting can happen directly into its
+//! final destination buffer (such as a file or string).
+//!
+//! ```
+//! use std::fmt::Display;
+//!
+//! use lazy_format::lazy_format;
+//!
+//! // NOTE: This is obviously profoundly unsafe and you should never actually
+//! // render HTML without escape guards, code injection prevention, etc.
+//! fn html_tag<'a>(tag: &'a str, content: impl Display + 'a) -> impl Display + 'a {
+//!     lazy_format!("<{tag}>{content}</{tag}>", tag=tag, content=content)
+//! }
+//!
+//! let result = html_tag("div", html_tag("p", "Hello, World!")).to_string();
+//! assert_eq!(result, "<div><p>Hello, World!</p></div>");
+//! ```
+
 use core::fmt::{self, Debug, Display, Formatter};
 
+/// Lazily format something
+///
+/// This macro is essentially the same as `format!`, except that instead of
+/// formatting its arguments to a string, it captures them in an opaque struct
+/// ([`LazyFormat`]), which can be formatted later. This allows you to build
+/// up formatting operations without any intermediary allocations or extra
+/// formatting calls. See the module-level documentation for details.
 #[macro_export]
 macro_rules! lazy_format {
     ($pattern:literal) => {
-        $crate::LazyFormat(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
+        $crate::LazyFormat::new(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
             // TODO: replace this with f.write_str, once we have a way to ensure
             // that pattern is a string literal.
             write!(f, $pattern)
         })
     };
     ($pattern:literal, $($args:tt)*) => {
-        $crate::LazyFormat(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
+        $crate::LazyFormat::new(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
             write!(f, $pattern, $($args)*)
         })
     };
 }
 
+/// Struct containing the captured information from a [`lazy_format`] invocation.
+///
+/// This struct provides a `Display` implementation, which actually executes
+/// the formatting which was lazily requested by [`lazy_format`].
 #[derive(Clone, PartialEq, Eq)]
 pub struct LazyFormat<F: Fn(&mut Formatter) -> fmt::Result>(F);
 
@@ -38,6 +70,10 @@ impl<F: Fn(&mut Formatter) -> fmt::Result> Display for LazyFormat<F> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         (self.0)(f)
     }
+}
+
+pub mod prelude {
+    pub use crate::lazy_format;
 }
 
 #[cfg(test)]
