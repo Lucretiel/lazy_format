@@ -1,6 +1,6 @@
 # lazy_format
 
-A library for lazily formatting things. Because allocating temporary strings is bad for your health.
+A `[no_std]` library for lazily formatting things. Because allocating temporary strings is bad for your health.
 
 ```rust
 use std::io;

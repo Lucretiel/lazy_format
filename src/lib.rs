@@ -1,8 +1,11 @@
 #![no_std]
 
-//! lazy_format is a macro which lazily formats its arguments. That is, rather
-//! than immediatly formatting them into a [`String`] (which is what [`format!`])
-//! does, it captures its arguments and returns an opaque struct with a [`Display`]
+//! [`lazy_format!`] is a macro which lazily formats its arguments. That is, rather
+//! than immediatly formatting them into a
+//! [`String`](https://doc.rust-lang.org/std/string/struct.String.html)
+//! (which is what [`format!`](https://doc.rust-lang.org/std/macro.format.html))
+//! does, it captures its arguments and returns an opaque struct with a
+//! [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
 //! implementation, so that the actual formatting can happen directly into its
 //! final destination buffer (such as a file or string).
 //!
@@ -25,11 +28,12 @@ use core::fmt::{self, Debug, Display, Formatter};
 
 /// Lazily format something
 ///
-/// This macro is essentially the same as [`format!`], except that instead of
-/// formatting its arguments to a string, it captures them in an opaque struct,
-/// which can be formatted later. This allows you to build up formatting
+/// This macro is essentially the same as
+/// [`format!`](https://doc.rust-lang.org/std/macro.format.html), except that
+/// instead of formatting its arguments to a string, it captures them in an opaque
+/// struct, which can be formatted later. This allows you to build up formatting
 /// operations without any intermediary allocations or extra formatting calls.
-/// See the module-level documentation for details.
+/// See the [module-level documentation](/lazy_format) for details.
 ///
 /// The return type of this macro is `impl Display`.
 #[macro_export]
