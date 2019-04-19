@@ -20,7 +20,7 @@
 //!     lazy_format!("<{tag}>{content}</{tag}>", tag=tag, content=content)
 //! }
 //!
-//! let result = html_tag("div", html_tag("p", "Hello, World!")).to_string();
+//! let result = html_tag("div", html_tag("p", "Hello, World!"));
 //! assert_eq!(result, "<div><p>Hello, World!</p></div>");
 //! ```
 
@@ -35,37 +35,125 @@ use core::fmt::{self, Debug, Display, Formatter};
 /// operations without any intermediary allocations or extra formatting calls.
 /// See the [module-level documentation](/lazy_format) for details.
 ///
-/// The return type of this macro is `impl Display`.
+/// The return type of this macro is `impl Display + Debug`. When Rust's
+/// `impl trait` feature is more powerful, this will also include traits that
+/// are conditional on the caputred variables, like `Clone`.
+///
+/// # Example:
+///
+/// ```
+/// use std::fmt::Display;
+/// use lazy_format::lazy_format;
+///
+/// fn get_hello() -> String {
+///     String::from("Hello")
+/// }
+///
+/// fn get_world() -> String {
+///     String::from("World")
+/// }
+///
+/// fn hello_world() -> impl Display {
+///     lazy_format!("{}, {w}!", get_hello(), w = get_world())
+/// }
+///
+/// let result = hello_world();
+///
+/// // get_hello and get_world aren't called until the object is
+/// // formatted into a String
+/// let result_str = result;
+/// assert_eq!(result_str, "Hello, World!");
+/// ```
 #[macro_export]
 macro_rules! lazy_format {
-    // TODO: test that this fails with non string literals
     ($pattern:literal) => {
-        (::lazy_format::require_static_str($pattern))
-    };
+        $crate::make_lazy_format(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
+            write!(f, $pattern)
+        }) };
     ($pattern:literal, $($args:tt)*) => {
-        (::lazy_format::make_lazy_format(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
+        $crate::make_lazy_format(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
             write!(f, $pattern, $($args)*)
-        }))
+        })
     };
 }
 
-// TODO: pub const fn
+#[macro_export]
+macro_rules! semi_lazy_format {
+
+    ($pattern:literal, $($args:tt)*) => {
+        $crate::semi_lazy_format_impl!($pattern, $($args)*)
+    };
+}
+
 #[doc(hidden)]
-#[inline(always)]
-pub fn require_static_str(s: &'static str) -> impl Display + 'static {
-    s
+#[macro_export]
+macro_rules! semi_lazy_format_impl {
+    (
+        $({ $evaluated_value:ident $($fmt_name:ident)?})*
+    @ $pattern:literal) => {
+        $crate::lazy_format!($pattern $(, $($fmt_name =)? $evaluated_value)*)
+    };
+
+    (
+        $({ $evaluated_value:ident $($fmt_name:ident)?})*
+    @ $pattern:literal,) => {
+        $crate::lazy_format!($pattern $(, $($fmt_name =)? $evaluated_value)*)
+    };
+
+    (
+        $({ $evaluated_value:ident $($fmt_name:ident)?})*
+    @ $pattern:literal, $name:ident = $value:expr) => {{
+        let value = $value;
+        $crate::semi_lazy_format_impl!(
+            $({ $evaluated_value $($fmt_name)? })*
+            { value $name }
+        @ $pattern)
+    }};
+
+    (
+        $({ $evaluated_value:ident $($fmt_name:ident)?})*
+    @ $pattern:literal, $value:expr) => {{
+        let value = $value;
+        $crate::semi_lazy_format_impl!(
+            $({ $evaluated_value $($fmt_name)? })*
+            { value }
+        @ $pattern)
+    }};
+
+/*
+    ({
+        $({ $evaluated_value:ident $($fmt_name:ident)?})*
+    } @ $pattern:literal, $name:ident = $value:expr, $($tail:tt)*) => {{
+        let value = $value;
+        $crate::semi_lazy_format_impl!({
+            $({ $evaluated_value $($fmt_name)? })*
+            { value $name }
+        } @ $pattern, $($tail)*)
+    }};
+
+    ({
+        $({ $evaluated_value:ident $($fmt_name:ident)?})*
+    } @ $pattern:literal, $value:expr, $($tail:tt)*) => {{
+        let value = $value;
+        $crate::semi_lazy_format_impl!({
+            $({ $evaluated_value $($fmt_name)? })*
+            { value }
+        } @ $pattern, $($tail)*)
+    }};
+    */
 }
 
 #[doc(hidden)]
 #[inline(always)]
-pub fn make_lazy_format<F: Fn(&mut Formatter) -> fmt::Result>(f: F) -> impl Display {
+pub fn make_lazy_format<F: Fn(&mut Formatter) -> fmt::Result>(f: F) -> impl Display + Debug {
     LazyFormat(f)
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct LazyFormat<F: Fn(&mut Formatter) -> fmt::Result>(F);
 
 impl<F: Fn(&mut Formatter) -> fmt::Result> Debug for LazyFormat<F> {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str("LazyFormat(<closure>)")
     }
@@ -80,4 +168,45 @@ impl<F: Fn(&mut Formatter) -> fmt::Result> Display for LazyFormat<F> {
 
 pub mod prelude {
     pub use crate::lazy_format;
+}
+
+#[cfg(test)]
+mod semi_lazy_format_syntax_tests {
+    use crate::semi_lazy_format;
+    #[test]
+    fn test_no_args() {
+        let result = semi_lazy_format!("Hello, World!");
+    }
+
+    #[test]
+    fn test_trailing_comma() {
+        let result = semi_lazy_format!("Hello, World!",);
+    }
+
+    #[test]
+    fn test_one_arg() {
+        let result = semi_lazy_format!("{}!", "Hello, World");
+    }
+
+    #[test]
+    fn test_one_named_arg() {
+        let result = semi_lazy_format!("{text}!", text = "Hello, World");
+    }
+
+    /*
+    #[test]
+    fn test_two_args() {
+        let result = semi_lazy_format!("{}, {}!", "Hello", "World");
+    }
+
+    #[test]
+    fn test_two_named_args() {
+        let result = semi_lazy_format!("{h}, {w}!", h="Hello", w="World");
+    }
+
+    #[test]
+    fn test_mixed_args() {
+        let result = semi_lazy_format!("{}, {w}!", "Hello", w="World");
+    }
+    */
 }
