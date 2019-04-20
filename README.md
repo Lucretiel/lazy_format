@@ -1,3 +1,8 @@
+[![Travis (.com)](https://img.shields.io/travis/com/Lucretiel/lazy_format.svg?logo=travis)](https://travis-ci.com/Lucretiel/lazy_format/)
+[![Crates.io](https://img.shields.io/crates/v/lazy_format.svg?logo=rust&logoColor=white)](https://crates.io/crates/lazy_format)
+[![docs.rs](https://docs.rs/lazy_format/badge.svg)](https://docs.rs/lazy_format)
+[![license](https://img.shields.io/github/license/Lucretiel/lazy_format.svg)](https://crates.io/crates/lazy_format/)
+
 # lazy_format
 
 A `[no_std]` library for lazily formatting things. Because allocating temporary strings is bad for your health.
