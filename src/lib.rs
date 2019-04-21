@@ -110,7 +110,7 @@ macro_rules! lazy_format {
         }
 
         LazyFormat(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
-            write!(f, $pattern $($args)*)
+            write!(f, $pattern, $($args)*)
         })
     }};
 }
@@ -173,9 +173,26 @@ macro_rules! semi_lazy_format {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! semi_lazy_format_impl {
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal) => {
-        $crate::lazy_format!($pattern $(, $($fmt_name =)? $evaluated_value)*)
-    };
+    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal) => {{
+        trait DebugHelper {
+            fn add_fields<'a>(&self, f: &'a mut ::core::fmt::DebugStruct);
+        }
+
+        #[derive(Clone, Copy)]
+        struct SemiLazyFormat<T>(T);
+
+        impl<T: DebugHelper> Debug for SemiLazyFormat<T> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                let mut builder = f.debug_struct("SemiLazyFormat");
+                self.0.add_fields(&mut builder);
+                builder.finish()
+            }
+        }
+
+        impl
+
+        SemiLazyFormat(make_semi_lazy_format_struct!(SemiLazyFormatImpl, $({$evaluated_value $($fmt_name)?})*))
+    }};
 
     ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal,) => {
         $crate::semi_lazy_format_impl!($({ $evaluated_value $($fmt_name)? })* $pattern)
