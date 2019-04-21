@@ -1,6 +1,7 @@
 #![no_std]
 
-//! lazy_format is a collection of [`format!`]-style macros which lazily
+//! lazy_format is a collection of
+//! [`format!`](https://doc.rust-lang.org/std/macro.format.html)-style macros which lazily
 //! formatting their arguments its arguments. That is, rather than immediatly
 //! formatting them into a [`String`](https://doc.rust-lang.org/std/string/struct.String.html)
 //! (which is what [`format!`](https://doc.rust-lang.org/std/macro.format.html))
@@ -29,11 +30,13 @@
 //! - [`lazy_format!`], a completely lazy formatter. It captures the expressions
 //! passed as arguments in a closure, and doesn't evaluate them until the
 //! instance is *actually* written to a destination (like a string or file).
-//! This means that
-//! - [`semi_lazy_format`] is partially lazy. It fully evaluates all of its
-//! arguments when it is invoked, but it stores them
+//! This means that the expressions are evaluated *every* time the instance is
+//! written somewhere.
+//! - [`semi_lazy_format!`] is partially lazy. It fully evaluates all of its
+//! arguments when it is invoked, but it stores them inside the returned instance
+//! and formats them when the instance is written.
 
-/// Lazily format something
+/// Lazily format something.
 ///
 /// This macro is essentially the same as
 /// [`format!`](https://doc.rust-lang.org/std/macro.format.html), except that
@@ -42,19 +45,23 @@
 /// operations without any intermediary allocations or extra formatting calls.
 ///
 /// The return value of this macro is left deliberately unspecified and
-/// undocumented. The most important this about it is its `Display`
+/// undocumented. The most important this about it is its
+/// [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
 /// implementation, which executes the deferred formatting operation. It
-/// also provides a `Debug` implementation, which simply prints the
-/// `lazy_format!(...)` call without evaluating any of its arguments, as well
-/// as `Clone` and `Copy` if those traits are available in the captured values.
+/// also provides a [`Debug`](https://doc.rust-lang.org/std/fmt/trait.Debug.html)
+/// implementation, which simply prints the [`lazy_format!`]`(...)` call without
+/// evaluating any of its arguments, as well as [`Clone`] and [`Copy`] if those
+/// traits are available in the captured context.
 ///
 /// Note that this macro is completely lazy; it captures the expressions to
 /// be formatted in the struct and doesn't evaluate them until the struct is
-/// actually written to a `String` or `File` or or other writable destination.
-/// This means that the argument expression will be evaluated *every* time the
-/// instance is written, which may not be what you want. See [`semi_lazy_format`]
-/// for a macro which eagerly evaluates its arguments but lazily does the final
-/// formatting.
+/// actually written to a
+/// [`String`](https://doc.rust-lang.org/std/string/struct.String.html) or
+/// [`File`](https://doc.rust-lang.org/std/fs/struct.File.html) or or other
+/// writable destination. This means that the argument expression will be
+/// evaluated *every* time the instance is written, which may not be what you
+/// want. See [`semi_lazy_format!`] for a macro which eagerly evaluates its
+/// arguments but lazily does the final formatting.
 ///
 /// # Example:
 ///
@@ -118,9 +125,10 @@ macro_rules! lazy_format {
 /// formatting calls.
 ///
 /// The return value of this macro is left deliberately unspecified and
-/// undocumented. The most important this about it is its `Display`
+/// undocumented. The most important this about it is its
+/// [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
 /// implementation, which executes the deferred formatting operation. It
-/// also provides `Clone` and `Copy` if those traits are implementated in all
+/// also provides [`Clone`] and [`Copy`] if those traits are implementated in all
 /// of the evaluated formatting arguments.
 ///
 /// Unlike [`lazy_format`], this macro is partially lazy, in that it evaluates
