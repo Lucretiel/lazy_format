@@ -12,12 +12,14 @@ struct ValueEmitter {
 
 impl ValueEmitter {
     fn new() -> Self {
-        ValueEmitter {count: Cell::new(0)}
+        ValueEmitter {
+            count: Cell::new(0),
+        }
     }
 
     fn next(&self) -> String {
         self.count.set(self.count.get() + 1);
-        return format!("{}", self.count.get())
+        return format!("{}", self.count.get());
     }
 
     fn count(&self) -> usize {
@@ -29,13 +31,18 @@ mod lazy_format {
     use std::fmt::Display;
     use std::fmt::Write;
 
-    use lazy_format::lazy_format;
     use crate::ValueEmitter;
+    use lazy_format::lazy_format;
 
     #[test]
     fn basic_format() {
         let mut dest = String::new();
-        write!(&mut dest, "{}", lazy_format!("{}, {value}", 123, value="Hello, World")).unwrap();
+        write!(
+            &mut dest,
+            "{}",
+            lazy_format!("{}, {value}", 123, value = "Hello, World")
+        )
+        .unwrap();
         assert_eq!(dest, "123, Hello, World");
     }
 
@@ -48,7 +55,6 @@ mod lazy_format {
     #[test]
     fn ensure_lazy() {
         let emitter = &ValueEmitter::new();
-
 
         let lazily_formatted = lazy_format!("{}, {} ({})", "Hello", "World", emitter.next());
         let lazy2 = lazy_format!("{} {} {}", emitter.next(), emitter.next(), emitter.next());
@@ -80,11 +86,13 @@ mod lazy_format {
 
         assert_eq!(emitter.count(), 0);
 
-
         assert_eq!(lazy3.to_string(), "((1, 2), (3, 4)), ((5, 6), (7, 8))");
         assert_eq!(emitter.count(), 8);
 
-        assert_eq!(lazy3.to_string(), "((9, 10), (11, 12)), ((13, 14), (15, 16))");
+        assert_eq!(
+            lazy3.to_string(),
+            "((9, 10), (11, 12)), ((13, 14), (15, 16))"
+        );
         assert_eq!(emitter.count(), 16);
     }
 
@@ -105,7 +113,7 @@ mod lazy_format {
     fn test_result_value_with_lifetime() {
         // This function tests that the return value of lazy_format (and specifically
         // of make_lazy_format) fulfills the lifetime bound
-        fn double_str<'a>(s: &'a str) -> impl Display + 'a{
+        fn double_str<'a>(s: &'a str) -> impl Display + 'a {
             lazy_format!("{}, {}", s, s)
         }
 
@@ -129,7 +137,7 @@ mod semi_lazy_format {
     }
 
     #[test]
-    fn one_arg(){
+    fn one_arg() {
         let result = semi_lazy_format!("{}!", "Hello, World").to_string();
         assert_eq!(result, "Hello, World!");
     }
@@ -142,13 +150,13 @@ mod semi_lazy_format {
 
     #[test]
     fn named_args() {
-        let result = semi_lazy_format!("{h}, {w}!", h="Hello", w="World").to_string();
+        let result = semi_lazy_format!("{h}, {w}!", h = "Hello", w = "World").to_string();
         assert_eq!(result, "Hello, World!");
     }
 
     #[test]
     fn reverse_named_args() {
-        let result = semi_lazy_format!("{h}, {w}!", w="World", h="Hello").to_string();
+        let result = semi_lazy_format!("{h}, {w}!", w = "World", h = "Hello").to_string();
         assert_eq!(result, "Hello, World!");
     }
 
@@ -156,11 +164,12 @@ mod semi_lazy_format {
     fn test_evaluate_once() {
         let emitter = ValueEmitter::new();
 
-        let formatted = semi_lazy_format!("{} {b} {a} {b} {}",
+        let formatted = semi_lazy_format!(
+            "{} {b} {a} {b} {}",
             emitter.next(),
             emitter.next(),
-            a=emitter.next(),
-            b=emitter.next(),
+            a = emitter.next(),
+            b = emitter.next(),
         );
 
         // At this point, the emitted should have been advanced
@@ -180,7 +189,7 @@ mod semi_lazy_format {
     /// immediately.
     #[test]
     fn test_dropped_lifetime() {
-        fn get_value<'a>(value: &'a str) ->  impl Display {
+        fn get_value<'a>(value: &'a str) -> impl Display {
             semi_lazy_format!("{} {a}", String::from(value), a = String::from(value))
         }
 

@@ -231,21 +231,30 @@ mod semi_lazy_format_syntax_tests {
 
     #[test]
     fn test_one_named_arg() {
-        let _result = semi_lazy_format!("{text}!", text="Hello, World");
+        let _result = semi_lazy_format!("{text}!", text = "Hello, World");
     }
 
     #[test]
     fn test_two_named_args() {
-        let _result = semi_lazy_format!("{h}, {w}!", h="Hello", w="World");
+        let _result = semi_lazy_format!("{h}, {w}!", h = "Hello", w = "World");
     }
 
     #[test]
     fn test_mixed_args() {
-        let _result = semi_lazy_format!("{}, {w}!", "Hello", w="World");
+        let _result = semi_lazy_format!("{}, {w}!", "Hello", w = "World");
     }
 
     #[test]
     fn test_many_args() {
-        let _result = semi_lazy_format!("{} {} {} {a} {b} {} {b} {a} {}", 1, 2, 3, 4, 5, a=10, b=20);
+        let _result = semi_lazy_format!(
+            "{} {} {} {a} {b} {} {b} {a} {}",
+            1,
+            2,
+            3,
+            4,
+            5,
+            a = 10,
+            b = 20
+        );
     }
 }
