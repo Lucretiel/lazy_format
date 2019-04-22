@@ -173,38 +173,30 @@ macro_rules! semi_lazy_format {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! semi_lazy_format_impl {
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal) => {
-        $crate::lazy_format!($pattern $(, $($fmt_name =)? $evaluated_value)*)
-    };
-
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal,) => {
-        $crate::semi_lazy_format_impl!($({ $evaluated_value $($fmt_name)? })* $pattern)
-    };
-
     // Important: the name = value variants must come first, because "name = value"
     // is a valid rust expr
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal, $name:ident = $value:expr) => {
-        $crate::semi_lazy_format_impl!($({ $evaluated_value $($fmt_name)? })* $pattern, $name = $value,)
-    };
+    ($({ $evaluated_name:ident })* $pattern:literal $(, $name:ident = $value:expr)* $(,)?) => {{
+        $(let $name = $value;)*
 
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal, $name:ident = $value:expr, $($tail:tt)*) => {{
-        let value = $value;
-        $crate::semi_lazy_format_impl!(
-            $({ $evaluated_value $($fmt_name)? })*
-            { value $name }
-        $pattern, $($tail)*)
+        $crate::lazy_format!(
+            $pattern,
+            $($evaluated_name,)*
+            $($name = $name,)*
+        )
     }};
 
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal, $value:expr) => {
-        $crate::semi_lazy_format_impl!($({ $evaluated_value $($fmt_name)? })* $pattern, $value, )
+    ($({ $evaluated_value:ident })* $pattern:literal, $value:expr) => {
+        $crate::semi_lazy_format_impl!($({ $evaluated_value })* $pattern, $value, )
     };
 
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal, $value:expr, $($tail:tt)*) => {{
+    ($({ $evaluated_value:ident })* $pattern:literal, $value:expr, $($tail:tt)*) => {{
         let value = $value;
         $crate::semi_lazy_format_impl!(
-            $({ $evaluated_value $($fmt_name)? })*
+            $({ $evaluated_value })*
             { value }
-        $pattern, $($tail)*)
+            $pattern,
+            $($tail)*
+        )
     }};
 }
 
