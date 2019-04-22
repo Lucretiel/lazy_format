@@ -36,6 +36,8 @@
 //! arguments when it is invoked, but it stores them inside the returned instance
 //! and formats them when the instance is written.
 
+use core::fmt::{DebugMap};
+
 /// Lazily format something.
 ///
 /// This macro is essentially the same as
@@ -164,65 +166,73 @@ macro_rules! lazy_format {
 #[macro_export]
 macro_rules! semi_lazy_format {
     // TODO: Debug implementation with values
-    ($pattern:literal $($args:tt)*) => {
-        $crate::semi_lazy_format_impl!($pattern $($args)*)
+    ($pattern:literal, $($args:tt)*) => {
+        #[derive(Debug, Clone, Copy)]
+        struct SemiLazyFormat()
     };
 }
 
 /// Implementation macro semi_lazy_format
 #[doc(hidden)]
 #[macro_export]
-macro_rules! semi_lazy_format_impl {
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal) => {{
-        trait DebugHelper {
-            fn add_fields<'a>(&self, f: &'a mut ::core::fmt::DebugStruct);
+macro_rules! make_semi_lazy_format_struct {
+    ($($fmt_name:ident = $value:expr),* (,)?) => {{
+        #[derive(Debug, Copy, Clone)]
+        struct SemiLazyFormatArgs<$($fmt_name: Display,)*> {$(
+            $fmt_name: $fmt_name,
+        )*}
+
+        SemiLazyFormat {
+            $fmt_name: $value,
+        }
+    }};
+
+    ($value:expr $(,)?) => {{
+        #[derive(Debug, Copy, Clone)]
+        struct SemiLazyFormatPositionalTail<T>{
+            tail: T,
         }
 
-        #[derive(Clone, Copy)]
-        struct SemiLazyFormat<T>(T);
+        SemiLazyFormatPositionalTail {
+            tail: $value,
+        }
+    }};
 
-        impl<T: DebugHelper> Debug for SemiLazyFormat<T> {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                let mut builder = f.debug_struct("SemiLazyFormat");
-                self.0.add_fields(&mut builder);
-                builder.finish()
-            }
+    ($value:expr, $($args:tt)+) => {{
+        #[derive(Debug, Copy, Clone)]
+        struct SemiLazyFormatPositionalNode<Head, Tail>{
+            head: Head,
+            tail: Tail,
         }
 
-        impl
+        SemiLazyFormatPositionalNode{
+            head: $value,
+            tail: $crate::make_semi_lazy_format_struct!($($args)*),
+        }
+    }}
+}
 
-        SemiLazyFormat(make_semi_lazy_format_struct!(SemiLazyFormatImpl, $({$evaluated_value $($fmt_name)?})*))
-    }};
+#[doc(hidden)]
+#[macro_export]
+macro_rules! make_semi_lazy_format_display_impl {
+    ($($this:ident).* ; $($fmt_name:ident = $value:expr),* (,)?) => (
+        $(
+            $fmt_name = $($this.)*$fmt_name,
+        )*
+    );
 
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal,) => {
-        $crate::semi_lazy_format_impl!($({ $evaluated_value $($fmt_name)? })* $pattern)
-    };
+    ($($this:ident).* ; $value:expr (,)?) => (
+        $($this.)*tail
+    );
 
-    // Important: the name = value variants must come first, because "name = value"
-    // is a valid rust expr
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal, $name:ident = $value:expr) => {
-        $crate::semi_lazy_format_impl!($({ $evaluated_value $($fmt_name)? })* $pattern, $name = $value,)
-    };
+    ($($this:ident).* ; $value:expr, $($args:tt)+) => (
+        $(this.)*head, $crate::make_semi_lazy_format_display_impl!($(this.)*tail ; $(args)*)
+    )
+}
 
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal, $name:ident = $value:expr, $($tail:tt)*) => {{
-        let value = $value;
-        $crate::semi_lazy_format_impl!(
-            $({ $evaluated_value $($fmt_name)? })*
-            { value $name }
-        $pattern, $($tail)*)
-    }};
-
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal, $value:expr) => {
-        $crate::semi_lazy_format_impl!($({ $evaluated_value $($fmt_name)? })* $pattern, $value, )
-    };
-
-    ($({ $evaluated_value:ident $($fmt_name:ident)?})* $pattern:literal, $value:expr, $($tail:tt)*) => {{
-        let value = $value;
-        $crate::semi_lazy_format_impl!(
-            $({ $evaluated_value $($fmt_name)? })*
-            { value }
-        $pattern, $($tail)*)
-    }};
+#[doc(hidden)]
+pub trait DebugHelper {
+    fn add_fields<'a>(&self, f: &'a mut DebugMap);
 }
 
 pub mod prelude {
