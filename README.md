@@ -1,4 +1,4 @@
-[![Travis (.com)](https://img.shields.io/travis/com/Lucretiel/lazy_format.svg?logo=travis)](https://travis-ci.com/Lucretiel/lazy_format/)
+[![Travis (.com)](https://img.shields.io/travis/com/Lucretiel/lazy_format/master.svg)](https://travis-ci.com/Lucretiel/lazy_format/)
 [![Crates.io](https://img.shields.io/crates/v/lazy_format.svg?logo=rust&logoColor=white)](https://crates.io/crates/lazy_format)
 [![docs.rs](https://docs.rs/lazy_format/badge.svg)](https://docs.rs/lazy_format)
 [![license](https://img.shields.io/github/license/Lucretiel/lazy_format.svg)](https://crates.io/crates/lazy_format/)
