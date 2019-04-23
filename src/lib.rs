@@ -36,6 +36,66 @@
 //! arguments when it is invoked, but it stores them inside the returned instance
 //! and formats them when the instance is written.
 
+/// Low level constructor for lazy format instances
+///
+/// [`make_lazy_format!`] is the low-level constructor for lazy format instances.
+/// It is completely customizable, insofar as it allows you to create a custom
+/// [`Display::fmt`] implementation at the call site.
+///
+/// [`make_lazy_format!`] takes a closure specification as an argument, and creates
+/// a [`Display`] struct that captures the local environment in a closure and uses
+/// it as the formatting function.
+///
+/// # Example:
+///
+/// ```
+/// use std::fmt::Display;
+/// use lazy_format::make_lazy_format;
+///
+/// let data = vec![1, 2, 3, 4, 5];
+///
+/// let comma_separated = make_lazy_format!(f => {
+///     let mut iter = data.iter();
+///     match iter.next() {
+///         None => Ok(()),
+///         Some(first) => {
+///             write!(f, "{}", first)?;
+///             iter.try_for_each(|value| write!(f, ", {}", value))
+///         }
+///     }
+/// });
+///
+/// let result = comma_separated.to_string();
+///
+/// assert_eq!(result, "1, 2, 3, 4, 5");
+/// ```
+#[macro_export]
+macro_rules! make_lazy_format {
+    ($fmt:ident => $write:expr) => {{
+        #[derive(Clone, Copy)]
+        struct LazyFormat<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result>(F);
+
+        // TODO: customize Debug impl for semi_lazy_format to include value
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::core::fmt::Debug for LazyFormat<F> {
+            #[inline]
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                f.write_str(concat!("make_lazy_format!(", stringify!( $fmt => $write ), ")"))
+            }
+        }
+
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::core::fmt::Display for LazyFormat<F> {
+            #[inline]
+            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                (self.0)(f)
+            }
+        }
+
+        LazyFormat(#[inline] move |$fmt: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
+            $write
+        })
+    }}
+}
+
 /// Lazily format something.
 ///
 /// This macro is essentially the same as
@@ -88,31 +148,88 @@
 /// let result_str = result.to_string();
 /// assert_eq!(result_str, "Hello, World!");
 /// ```
+///
+/// `lazy_format!` also conditional formatting with `match` or `if` like syntax.
+/// When doing a conditional format, add the formatting pattern and arguments
+/// directly into the `match` arms or `if` blocks, rather than code.
+///
+/// # `match` conditional example:
+///
+/// ```
+/// use std::fmt::Display;
+/// use lazy_format::lazy_format;
+///
+/// fn get_number(num: usize) -> impl Display {
+///     // Note that the parenthesis in the match conditional are required,
+///     // due to limitations in Rust's macro parsing (can't follow an
+///     // expression with `{}`)
+///     lazy_format!(match (num) {
+///         0 => ("Zero"),
+///         1 => ("One"),
+///         2 => ("Two"),
+///         3 => ("Three"),
+///         value if value % 2 == 0 => ("A large even number: {}", value),
+///         value => ("An unrecognized number: {v}", v = value),
+///     })
+/// }
+///
+/// assert_eq!(get_number(0).to_string(), "Zero");
+/// assert_eq!(get_number(1).to_string(), "One");
+/// assert_eq!(get_number(2).to_string(), "Two");
+/// assert_eq!(get_number(3).to_string(), "Three");
+/// assert_eq!(get_number(4).to_string(), "A large even number: 4");
+/// assert_eq!(get_number(5).to_string(), "An unrecognized number: 5");
+/// ```
+///
+/// # `if` conditional example:
+///
+/// ```
+/// use std::fmt::Display;
+/// use lazy_format::lazy_format;
+///
+/// fn describe_number(value: isize) -> impl Display {
+///     lazy_format!(
+///         if value < 0 => ("A negative number: {}", value)
+///         else if value % 3 == 0 => ("A number divisible by 3: {}", value)
+///         else if value % 2 == 1 => ("An odd number: {}", value)
+///         else ("Some other kind of number")
+///     )
+/// }
+///
+/// assert_eq!(describe_number(-2).to_string(), "A negative number: -2");
+/// assert_eq!(describe_number(-1).to_string(), "A negative number: -1");
+/// assert_eq!(describe_number(0).to_string(), "A number divisible by 3: 0");
+/// assert_eq!(describe_number(1).to_string(), "An odd number: 1");
+/// assert_eq!(describe_number(2).to_string(), "Some other kind of number");
+/// assert_eq!(describe_number(3).to_string(), "A number divisible by 3: 3");
+/// ```
 #[macro_export]
 macro_rules! lazy_format {
-    ($pattern:literal $($args:tt)*) => {{
-        #[derive(Clone, Copy)]
-        struct LazyFormat<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result>(F);
+    ($pattern:literal $($args:tt)*) => {
+        $crate::make_lazy_format!(f => write!(f, $pattern $($args)*))
+    };
 
-        // TODO: customize Debug impl for semi_lazy_format to include value
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::core::fmt::Debug for LazyFormat<F> {
-            #[inline]
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                f.write_str(concat!("lazy_format!(", stringify!( $pattern $($args)* ), ")"))
-            }
-        }
-
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::core::fmt::Display for LazyFormat<F> {
-            #[inline]
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                (self.0)(f)
-            }
-        }
-
-        LazyFormat(#[inline] move |f: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
-            write!(f, $pattern $($args)*)
+    (match ($condition:expr) {
+        $($match_pattern:pat $(if $guard:expr)? => ($pattern:literal $($args:tt)*)),* $(,)?
+    }) => {
+        $crate::make_lazy_format!(f => match ($condition) {
+            $($match_pattern $(if $guard)? => write!(f, $pattern $($args)*),)*
         })
-    }};
+    };
+
+    (
+        if $condition:expr => ($pattern:literal $($args:tt)*)
+        $(else if $elseif_condition:expr => ($elseif_pattern:literal $($elseif_args:tt)*))*
+        else $(=>)? ($else_pattern:literal $($else_args:tt)*)
+    ) => {
+        $crate::make_lazy_format!(f => if ($condition) {
+            write!(f, $pattern $($args)*)
+        } $(else if ($elseif_condition) {
+            write!(f, $elseif_pattern $($elseif_args)*)
+        })* else {
+            write!(f, $else_pattern $($else_args)*)
+        })
+    };
 }
 
 /// Lazily format something, but eagerly evaluate the arguments ahead of time.
@@ -201,7 +318,7 @@ macro_rules! semi_lazy_format_impl {
 }
 
 pub mod prelude {
-    pub use crate::{lazy_format, semi_lazy_format};
+    pub use crate::{lazy_format, make_lazy_format, semi_lazy_format};
 }
 
 /// The syntax of semi_lazy_format is fairly complicated; these tests are
