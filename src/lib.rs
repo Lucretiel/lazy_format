@@ -149,7 +149,7 @@ macro_rules! make_lazy_format {
 /// assert_eq!(result_str, "Hello, World!");
 /// ```
 ///
-/// `lazy_format!` also conditional formatting with `match` or `if` like syntax.
+/// `lazy_format!` supports conditional formatting with `match` or `if` like syntax.
 /// When doing a conditional format, add the formatting pattern and arguments
 /// directly into the `match` arms or `if` blocks, rather than code.
 ///
@@ -230,6 +230,10 @@ macro_rules! lazy_format {
             write!(f, $else_pattern $($else_args)*)
         })
     };
+    
+    (for $element:ident in $collection:expr: ($pattern:literal $($args:tt)*)) => {
+        $crate::make_lazy_format!(f => ($collection).try_for_each(move |$element| write!(f, $pattern $($args)*)))
+    }
 }
 
 /// Lazily format something, but eagerly evaluate the arguments ahead of time.
