@@ -24,27 +24,21 @@
 //! let result = html_tag("div", html_tag("p", "Hello, World!")).to_string();
 //! assert_eq!(result, "<div><p>Hello, World!</p></div>");
 //! ```
-//!
-//! This library contains two lazy formatting macros:
-//!
-//! - [`lazy_format!`], a completely lazy formatter. It captures the expressions
-//! passed as arguments in a closure, and doesn't evaluate them until the
-//! instance is *actually* written to a destination (like a string or file).
-//! This means that the expressions are evaluated *every* time the instance is
-//! written somewhere.
-//! - [`semi_lazy_format!`] is partially lazy. It fully evaluates all of its
-//! arguments when it is invoked, but it stores them inside the returned instance
-//! and formats them when the instance is written.
 
-/// Low level constructor for lazy format instances
+/// Low level constructor for lazy format instances. Create a lazy formatter
+/// with a custom closure as its
+/// [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
+/// implementation, for complete control over formatting behavior at write time.
 ///
 /// [`make_lazy_format!`] is the low-level constructor for lazy format instances.
 /// It is completely customizable, insofar as it allows you to create a custom
-/// [`Display::fmt`] implementation at the call site.
+/// [`Display::fmt`](https://doc.rust-lang.org/core/fmt/trait.Display.html#tymethod.fmt)
+/// implementation at the call site.
 ///
 /// [`make_lazy_format!`] takes a closure specification as an argument, and creates
-/// a [`Display`] struct that captures the local environment in a closure and uses
-/// it as the formatting function.
+/// a [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html) struct
+/// that captures the local environment in a closure and uses it as the
+/// formatting function.
 ///
 /// # Example:
 ///
@@ -96,13 +90,12 @@ macro_rules! make_lazy_format {
     }}
 }
 
-/// Lazily format something.
-///
-/// This macro is essentially the same as
+/// Lazily format something. Essentially the same as
 /// [`format!`](https://doc.rust-lang.org/std/macro.format.html), except that
 /// instead of formatting its arguments to a string, it captures them in an opaque
 /// struct, which can be formatted later. This allows you to build up formatting
-/// operations without any intermediary allocations or extra formatting calls.
+/// operations without any intermediary allocations or extra formatting calls. Also
+/// supports lazy conditional and looping constructs.
 ///
 /// The return value of this macro is left deliberately unspecified and
 /// undocumented. The most important this about it is its
@@ -123,7 +116,7 @@ macro_rules! make_lazy_format {
 /// want. See [`semi_lazy_format!`] for a macro which eagerly evaluates its
 /// arguments but lazily does the final formatting.
 ///
-/// # Example:
+/// # Basic example:
 ///
 /// ```
 /// use std::fmt::Display;
@@ -149,9 +142,13 @@ macro_rules! make_lazy_format {
 /// assert_eq!(result_str, "Hello, World!");
 /// ```
 ///
-/// `lazy_format!` also conditional formatting with `match` or `if` like syntax.
-/// When doing a conditional format, add the formatting pattern and arguments
-/// directly into the `match` arms or `if` blocks, rather than code.
+/// # Conditional formatting
+///
+/// `lazy_format!` supports conditional formatting with `match`- or `if`-
+/// like syntax. When doing a conditional format, add the formatting pattern
+/// and arguments directly into the `match` arms or `if` blocks, rather than
+/// code; this allows conditional formatting to still be captured in a single
+/// static type.
 ///
 /// # `match` conditional example:
 ///
@@ -203,12 +200,48 @@ macro_rules! make_lazy_format {
 /// assert_eq!(describe_number(2).to_string(), "Some other kind of number");
 /// assert_eq!(describe_number(3).to_string(), "A number divisible by 3: 3");
 /// ```
+///
+/// # Looping formatting
+///
+/// `lazy_format!` supports formatting elements in a collection with a loop.
+/// There are a few supported syntaxes:
+///
+/// ```
+/// use std::fmt::Display;
+/// use lazy_format::lazy_format;
+///
+/// let list = vec![1i32, 2, 3, 4];
+/// let list_ref = &list;
+///
+/// // Format each element in the iterable without additional arguments to `format_args`
+/// let simple_semicolons = lazy_format!("{v}; " for v in list_ref.iter().map(|x| x - 1));
+/// assert_eq!(simple_semicolons.to_string(), "0; 1; 2; 3; ");
+///
+/// // Perform a full format with additional arguments on each element in the iterable.
+/// let header = "Value";
+/// let full_format = lazy_format!(("{}: {}; ", header, v) for v in list_ref);
+/// assert_eq!(full_format.to_string(), "Value: 1; Value: 2; Value: 3; Value: 4; ");
+/// ```
+///
+/// Note that these looping formatters are not suitable for doing something like
+/// a comma separated list, since they'll apply the formatting to all elements.
+/// For a lazy string joining library, which only inserts separators between
+/// elements in a list, check out [joinery](/joinery).
 #[macro_export]
 macro_rules! lazy_format {
-    ($pattern:literal $($args:tt)*) => {
-        $crate::make_lazy_format!(f => write!(f, $pattern $($args)*))
+    // Trivial formatter: just write the pattern
+    ($pattern:literal) => {
+        $crate::lazy_format!($pattern,)
     };
 
+    // Basic lazy format: collect $args and format via `$pattern` when writing
+    // to a destination
+    ($pattern:literal, $($args:tt)*) => {
+        $crate::make_lazy_format!(f => write!(f, $pattern, $($args)*))
+    };
+
+    // Conditional lazy format: evaluate a match expression and format based on
+    // the matching arm
     (match ($condition:expr) {
         $($match_pattern:pat $(if $guard:expr)? => ($pattern:literal $($args:tt)*)),* $(,)?
     }) => {
@@ -217,6 +250,8 @@ macro_rules! lazy_format {
         })
     };
 
+    // Conditional lazy format: evaluate an if / else if / else expression and
+    // format based on the successful branch
     (
         if $condition:expr => ($pattern:literal $($args:tt)*)
         $(else if $elseif_condition:expr => ($elseif_pattern:literal $($elseif_args:tt)*))*
@@ -230,9 +265,24 @@ macro_rules! lazy_format {
             write!(f, $else_pattern $($else_args)*)
         })
     };
+
+    // Looping formatter: format each `$item` in `$collection` with `$pattern`
+    ($pattern:literal for $item:ident in $collection:expr) => {
+        $crate::lazy_format!(($pattern, $item = $item) for $item in $collection)
+    };
+
+    // Looping formatter: format each `$item` in `$collection` with the format
+    // arguments
+    (($pattern:literal $($args:tt)*) for $item:ident in $collection:expr) => {
+        $crate::make_lazy_format!(f =>
+            ::core::iter::IntoIterator::into_iter($collection)
+                .try_for_each(move |$item| write!(f, $pattern $($args)*))
+        )
+    };
 }
 
-/// Lazily format something, but eagerly evaluate the arguments ahead of time.
+/// Lazily format something by eagerly evaluate the arguments ahead of time,
+/// then storing them and formatting them at write time.
 ///
 /// This macro is essentially the same as
 /// [`format!`](https://doc.rust-lang.org/std/macro.format.html), except that
@@ -253,7 +303,9 @@ macro_rules! lazy_format {
 /// is often more convenient, especially if the formatted values are simple
 /// data types like integers and `&str`. This can also make using the value
 /// easier, as its less likely to capture locally scoped variable or references
-/// and therefore have lifetime issues.
+/// and therefore have lifetime issues. However, this also limits
+/// [`semi_lazy_format!`] to only supporting plain formatting, rather than the
+/// conditional and looping structures supported by [`lazy_format!`].
 ///
 ///
 /// ```
