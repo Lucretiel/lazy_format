@@ -425,7 +425,10 @@ pub mod prelude {
 
 /// The syntax of semi_lazy_format is fairly complicated; these tests are
 /// provided to ensure there are no failures. Putting them here (rather than
-/// in /tests) allows us to get better compiler diagnostics.
+/// in /tests) allows us to get better compiler diagnostics. Note that we can't
+/// actually test the evaluated result of these expressions, because we don't
+/// have a viable `write!` target (since we're in no_std so there are no
+/// strings)
 #[cfg(test)]
 mod semi_lazy_format_syntax_tests {
     #[test]
