@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+// Copyright 2019 Nathan West
+
 #![no_std]
 
 //! lazy_format is a collection of
@@ -145,7 +153,7 @@ macro_rules! make_lazy_format {
 /// # Conditional formatting
 ///
 /// `lazy_format!` supports conditional formatting with `match`- or `if`-
-/// like syntax. When doing a conditional format, add the formatting pattern
+/// style syntax. When doing a conditional format, add the formatting pattern
 /// and arguments directly into the `match` arms or `if` blocks, rather than
 /// code; this allows conditional formatting to still be captured in a single
 /// static type.
@@ -164,7 +172,8 @@ macro_rules! make_lazy_format {
 ///         0 => ("Zero"),
 ///         1 => ("One"),
 ///         2 => ("Two"),
-///         3 => ("Three"),
+///         | 3 => ("Three"),
+///         4 | 5 => ("Four or five"),
 ///         value if value % 2 == 0 => ("A large even number: {}", value),
 ///         value => ("An unrecognized number: {v}", v = value),
 ///     })
@@ -174,8 +183,10 @@ macro_rules! make_lazy_format {
 /// assert_eq!(get_number(1).to_string(), "One");
 /// assert_eq!(get_number(2).to_string(), "Two");
 /// assert_eq!(get_number(3).to_string(), "Three");
-/// assert_eq!(get_number(4).to_string(), "A large even number: 4");
-/// assert_eq!(get_number(5).to_string(), "An unrecognized number: 5");
+/// assert_eq!(get_number(4).to_string(), "Four or five");
+/// assert_eq!(get_number(5).to_string(), "Four or five");
+/// assert_eq!(get_number(6).to_string(), "A large even number: 6");
+/// assert_eq!(get_number(7).to_string(), "An unrecognized number: 7");
 /// ```
 ///
 /// # `if` conditional example:
@@ -199,6 +210,30 @@ macro_rules! make_lazy_format {
 /// assert_eq!(describe_number(1).to_string(), "An odd number: 1");
 /// assert_eq!(describe_number(2).to_string(), "Some other kind of number");
 /// assert_eq!(describe_number(3).to_string(), "A number divisible by 3: 3");
+/// ```
+///
+/// `if`-style lazy formatting also support `if let` expressions:
+///
+/// ```
+/// use std::fmt::Display;
+/// use lazy_format::lazy_format;
+///
+/// fn describe_optional_number(value: Option<isize>) -> impl Display {
+///     lazy_format!(
+///         if let Some(10) = value => ("It's ten!")
+///         else if let Some(3) | Some(4) = value => ("It's three or four!")
+///         else if let | Some(0) = value => ("It's zero!")
+///         else if let Some(x) = value => ("It's some other value: {}", x)
+///         else => ("It's not a number!")
+///     )
+/// }
+///
+/// assert_eq!(describe_optional_number(Some(10)).to_string(), "It's ten!");
+/// assert_eq!(describe_optional_number(Some(3)).to_string(), "It's three or four!");
+/// assert_eq!(describe_optional_number(Some(4)).to_string(), "It's three or four!");
+/// assert_eq!(describe_optional_number(Some(0)).to_string(), "It's zero!");
+/// assert_eq!(describe_optional_number(Some(5)).to_string(), "It's some other value: 5");
+/// assert_eq!(describe_optional_number(None).to_string(), "It's not a number!");
 /// ```
 ///
 /// # Looping formatting
@@ -243,23 +278,37 @@ macro_rules! lazy_format {
     // Conditional lazy format: evaluate a match expression and format based on
     // the matching arm
     (match ($condition:expr) {
-        $($match_pattern:pat $(if $guard:expr)? => ($pattern:literal $($args:tt)*)),* $(,)?
+        $(
+            $(|)? $match_pattern:pat
+            $(| $trailing_pattern:pat)*
+            $(if $guard:expr)?
+            => ($pattern:literal $($args:tt)*)
+        ),* $(,)?
     }) => {
         $crate::make_lazy_format!(f => match ($condition) {
-            $($match_pattern $(if $guard)? => write!(f, $pattern $($args)*),)*
+            $(
+                $match_pattern
+                $(| $trailing_pattern)*
+                $(if $guard)?
+                => write!(f, $pattern $($args)*),
+            )*
         })
     };
+
+    // Conditional pattern lazy format: evaluate
 
     // Conditional lazy format: evaluate an if / else if / else expression and
     // format based on the successful branch
     (
-        if $condition:expr => ($pattern:literal $($args:tt)*)
-        $(else if $elseif_condition:expr => ($elseif_pattern:literal $($elseif_args:tt)*))*
+        if $(let $(|)? $match:pat $(| $trailing_match:pat)* = )? $condition:expr
+            => ($pattern:literal $($args:tt)*)
+        $(else if $(let $(|)? $elseif_match:pat $(| $elseif_trailing_match:pat)* = )? $elseif_condition:expr
+            => ($elseif_pattern:literal $($elseif_args:tt)*))*
         else $(=>)? ($else_pattern:literal $($else_args:tt)*)
     ) => {
-        $crate::make_lazy_format!(f => if ($condition) {
+        $crate::make_lazy_format!(f => if $(let $match $(| $trailing_match)* = )? $condition {
             write!(f, $pattern $($args)*)
-        } $(else if ($elseif_condition) {
+        } $(else if $(let $elseif_match $(| $elseif_trailing_match)* = )? $elseif_condition {
             write!(f, $elseif_pattern $($elseif_args)*)
         })* else {
             write!(f, $else_pattern $($else_args)*)
@@ -292,7 +341,7 @@ macro_rules! lazy_format {
 /// formatting calls.
 ///
 /// The return value of this macro is left deliberately unspecified and
-/// undocumented. The most important this about it is its
+/// undocumented. The most important thing about it is its
 /// [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
 /// implementation, which executes the deferred formatting operation. It
 /// also provides [`Clone`] and [`Copy`] if those traits are implementated in all
@@ -313,22 +362,21 @@ macro_rules! lazy_format {
 /// use std::mem::{size_of_val, size_of};
 /// use lazy_format::semi_lazy_format;
 ///
-///
-/// fn get_value() -> usize {
-///     1024
-/// }
-///
 /// fn get_formatted() -> impl Display {
-///     semi_lazy_format!("value: {v}, again: {v}", v = get_value())
+///     let x: isize = 512;
+///     let y: isize = 512;
+///     semi_lazy_format!("value: {v}, again: {v}", v = (x + y))
 /// }
 ///
 /// let result = get_formatted();
 ///
-/// // At this point, get_value was called, and `result` stores just the
-/// // usize return value. No allocations have been performed yet.
+/// // At this point, addition expression has been performed. `result`
+/// // captures only the result of the expression, rather than the two
+/// // operands.
+/// assert_eq!(size_of_val(&result), size_of::<isize>());
+///
 /// let result_str = result.to_string();
 /// assert_eq!(result_str, "value: 1024, again: 1024");
-/// assert_eq!(size_of_val(&result), size_of::<usize>());
 /// ```
 #[macro_export]
 macro_rules! semi_lazy_format {
@@ -342,8 +390,8 @@ macro_rules! semi_lazy_format {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! semi_lazy_format_impl {
-    // Important: the name = value variants must come first, because "name = value"
-    // is a valid rust expr
+    // Important: the `name = value` variants of this macro definition must
+    // come first, because "name = value" is a valid rust expr
     ($({ $evaluated_name:ident })* $pattern:literal $(, $name:ident = $value:expr)* $(,)?) => {{
         $(let $name = $value;)*
 
@@ -358,6 +406,8 @@ macro_rules! semi_lazy_format_impl {
         $crate::semi_lazy_format_impl!($({ $evaluated_value })* $pattern, $value, )
     };
 
+    // The trick here is to use a hygenic identifier. The `value` name used in
+    // this step of the evaluation is considered distinct from the other ones.
     ($({ $evaluated_value:ident })* $pattern:literal, $value:expr, $($tail:tt)*) => {{
         let value = $value;
         $crate::semi_lazy_format_impl!(

@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+// Copyright 2019 Nathan West
+
 #![cfg(test)]
 
 use std::cell::Cell;
@@ -120,6 +128,22 @@ mod lazy_format {
         let content = "Hello".to_string();
         let result = double_str(content.as_str()).to_string();
         assert_eq!(result, "Hello, Hello");
+    }
+
+    #[test]
+    fn test_if_let() {
+        fn describe_optional(value: Option<isize>) -> impl Display {
+            lazy_format!(
+                if let Some(3) | Some(4) = value => ("Got a 3 or a 4")
+                else if let | Some(x) = value => ("Got a value: {}", x)
+                else => ("Got nothing")
+            )
+        }
+
+        assert_eq!(describe_optional(Some(3)).to_string(), "Got a 3 or a 4");
+        assert_eq!(describe_optional(Some(4)).to_string(), "Got a 3 or a 4");
+        assert_eq!(describe_optional(Some(10)).to_string(), "Got a value: 10");
+        assert_eq!(describe_optional(None).to_string(), "Got nothing")
     }
 }
 
