@@ -439,28 +439,60 @@ macro_rules! semi_lazy_format {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! semi_lazy_format_impl {
-    // Important: the `name = value` variants of this macro definition must
-    // come first, because "name = value" is a valid rust expr
-    ($({ $evaluated_name:ident })* $pattern:literal $(, $name:ident = $value:expr)* $(,)?) => {{
-        $(let $name = $value;)*
-
+    (
+        $({ $positional_value:ident })*
+        $({ = $keyed_name:ident $keyed_value:ident })*
+        $pattern:literal $(,)?
+    ) => {
         $crate::lazy_format!(
             $pattern,
-            $($evaluated_name,)*
-            $($name = $name,)*
+            $($positional_value,)*
+            $($keyed_name = $keyed_value,)*
+        )
+    };
+
+    (
+        $({ $positional_value:ident })*
+        $({ = $keyed_name:ident $keyed_value:ident })*
+        $pattern:literal,
+        $name:ident = $value:expr
+    ) => {
+        $crate::semi_lazy_format_impl!(
+            $({ $positional_value })*
+            $({ = $keyed_name $keyed_value })*
+            $pattern,
+            $name = $value,
+        )
+    };
+    // Important: the `name = value` variants of this macro definition must
+    // come first, because "name = value" is a valid rust expr
+    (
+        $({ $positional_value:ident })*
+        $({ = $keyed_name:ident $keyed_value:ident })*
+        $pattern:literal,
+        $name:ident = $value:expr, $($tail:tt)*
+    ) => {{
+        let value = $value;
+
+        $crate::semi_lazy_format_impl!(
+            $({ $positional_value })*
+            $({ = $keyed_name $keyed_value })*
+            { = $name value }
+            $pattern,
+            $($tail)*
         )
     }};
 
-    ($({ $evaluated_value:ident })* $pattern:literal, $value:expr) => {
-        $crate::semi_lazy_format_impl!($({ $evaluated_value })* $pattern, $value, )
+    ($({ $positional_value:ident })* $pattern:literal, $value:expr) => {
+        $crate::semi_lazy_format_impl!($({ $positional_value })* $pattern, $value, )
     };
 
     // The trick here is to use a hygenic identifier. The `value` name used in
     // this step of the evaluation is considered distinct from the other ones.
-    ($({ $evaluated_value:ident })* $pattern:literal, $value:expr, $($tail:tt)*) => {{
+    ($({ $positional_value:ident })* $pattern:literal, $value:expr, $($tail:tt)*) => {{
         let value = $value;
         $crate::semi_lazy_format_impl!(
-            $({ $evaluated_value })*
+            $({ $positional_value })*
             { value }
             $pattern,
             $($tail)*

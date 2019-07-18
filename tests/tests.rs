@@ -219,4 +219,18 @@ mod semi_lazy_format {
 
         assert_eq!(get_value("HELLO").to_string(), "HELLO HELLO");
     }
+
+    #[test]
+    fn test_shadowed_name() {
+        // Ensure that the keys used in formats don't act as shadowing variable
+        // names
+
+        let a: isize = 10;
+        let b: isize = 20;
+        let ab: isize = 0;
+
+        let result = semi_lazy_format!("{a} {b} {ab}", ab = a + b, b = ab, a = ab);
+        assert_eq!(result.to_string(), "0 0 30");
+
+    }
 }
