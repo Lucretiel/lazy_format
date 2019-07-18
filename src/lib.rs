@@ -352,10 +352,7 @@ macro_rules! lazy_format {
 /// is often more convenient, especially if the formatted values are simple
 /// data types like integers and `&str`. This can also make using the value
 /// easier, as its less likely to capture locally scoped variable or references
-/// and therefore have lifetime issues. However, this also limits
-/// [`semi_lazy_format!`] to only supporting plain formatting, rather than the
-/// conditional and looping structures supported by [`lazy_format!`].
-///
+/// and therefore have lifetime issues.
 ///
 /// ```
 /// use std::fmt::Display;
@@ -378,8 +375,60 @@ macro_rules! lazy_format {
 /// let result_str = result.to_string();
 /// assert_eq!(result_str, "value: 1024, again: 1024");
 /// ```
+///
+/// [`semi_lazy_format`] supports `match`-like formatting expressions, with the
+/// same syntax as [`lazy_format`]. In this case, only the condition is
+/// evaluated ahead of time; the match itself is deferred until the object is
+/// written, due to limitations in the type system.
+///
+/// ```
+///
+/// use std::fmt::Display;
+/// use std::mem::{size_of_val, size_of};
+/// use lazy_format::semi_lazy_format;
+///
+/// fn get_formatted() -> impl Display {
+///     let opt1 = Some(10 as isize);
+///     let opt2 = Some(20 as isize);
+///     let opt3 = Some(30 as isize);
+///
+///     semi_lazy_format!(match (
+///         opt1.and(opt2).and(opt3)
+///     ) {
+///         Some(value) => ("value: {}", value),
+///         None => ("no value."),
+///     })
+/// }
+///
+/// let result = get_formatted();
+/// assert_eq!(size_of_val(&result), size_of::<Option<isize>>());
+///
+/// let result_str = result.to_string();
+/// assert_eq!(result_str, "value: 30");
+///
+/// ```
 #[macro_export]
 macro_rules! semi_lazy_format {
+    (match ($condition:expr) {
+        $(
+            $(|)? $match_pattern:pat
+            $(| $trailing_pattern:pat)*
+            $(if $guard:expr)?
+            => ($pattern:literal $($args:tt)*)
+        ),* $(,)?
+    }) => {{
+        let evaluated_condition = $condition;
+
+        $crate::lazy_format!(match (evaluated_condition) {
+            $(
+                $match_pattern
+                $(| $trailing_pattern)*
+                $(if $guard)?
+                => ($pattern $($args)*),
+            )*
+        })
+    }};
+
     // TODO: Debug implementation with values
     ($pattern:literal $($args:tt)*) => {
         $crate::semi_lazy_format_impl!($pattern $($args)*)
