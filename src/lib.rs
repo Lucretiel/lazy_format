@@ -264,15 +264,10 @@ macro_rules! make_lazy_format {
 /// elements in a list, check out [joinery](/joinery).
 #[macro_export]
 macro_rules! lazy_format {
-    // Trivial formatter: just write the pattern.
-    ($pattern:literal) => {
-        $crate::lazy_format!($pattern,)
-    };
-
     // Basic lazy format: collect $args and format via `$pattern` when writing
     // to a destination
-    ($pattern:literal, $($args:tt)*) => {
-        $crate::make_lazy_format!(f => write!(f, $pattern, $($args)*))
+    ($pattern:literal $(, $($args:tt)*)?) => {
+        $crate::make_lazy_format!(f => write!(f, $pattern $(, $($args)*)?))
     };
 
     // Conditional lazy format: evaluate a match expression and format based on
