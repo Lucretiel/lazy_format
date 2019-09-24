@@ -150,6 +150,30 @@ macro_rules! make_lazy_format {
 /// assert_eq!(result_str, "Hello, World!");
 /// ```
 ///
+/// # Demonstation of lazy capturing:
+///
+/// ```
+/// use std::fmt::Display;
+/// use std::mem::{size_of_val, size_of};
+/// use lazy_format::lazy_format;
+///
+///
+/// fn get_formatted() -> impl Display {
+///     let a: isize = 10;
+///     let b: isize = 15;
+///
+///     lazy_format!("10 + 15: {v}, again: {v}", v = (a + b))
+/// }
+///
+/// let result = get_formatted();
+///
+/// // The result captures 2 isize values (a and b) from get_formatted.
+/// assert_eq!(size_of_val(&result), size_of::<isize>() * 2);
+///
+/// let result_str = result.to_string();
+/// assert_eq!(result_str, "10 + 15: 25, again: 25");
+/// ```
+///
 /// # Conditional formatting
 ///
 /// `lazy_format!` supports conditional formatting with `match`- or `if`-
@@ -158,7 +182,7 @@ macro_rules! make_lazy_format {
 /// code; this allows conditional formatting to still be captured in a single
 /// static type.
 ///
-/// # `match` conditional example:
+/// ## `match` conditional example:
 ///
 /// ```
 /// use std::fmt::Display;
@@ -189,7 +213,7 @@ macro_rules! make_lazy_format {
 /// assert_eq!(get_number(7).to_string(), "An unrecognized number: 7");
 /// ```
 ///
-/// # `if` conditional example:
+/// ## `if` conditional example:
 ///
 /// ```
 /// use std::fmt::Display;
@@ -212,7 +236,7 @@ macro_rules! make_lazy_format {
 /// assert_eq!(describe_number(3).to_string(), "A number divisible by 3: 3");
 /// ```
 ///
-/// `if`-style lazy formatting also support `if let` expressions:
+/// ## `if let` conditional example:
 ///
 /// ```
 /// use std::fmt::Display;
