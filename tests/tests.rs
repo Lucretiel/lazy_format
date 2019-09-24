@@ -185,6 +185,12 @@ mod semi_lazy_format {
     }
 
     #[test]
+    fn test_positional_and_named() {
+        let result = semi_lazy_format!("{h}, {}!", "World", h = "Hello").to_string();
+        assert_eq!(result, "Hello, World!");
+    }
+
+    #[test]
     fn test_evaluate_once() {
         let emitter = ValueEmitter::new();
 
@@ -231,6 +237,5 @@ mod semi_lazy_format {
 
         let result = semi_lazy_format!("{a} {b} {ab}", ab = a + b, b = ab, a = ab);
         assert_eq!(result.to_string(), "0 0 30");
-
     }
 }

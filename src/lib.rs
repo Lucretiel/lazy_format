@@ -264,7 +264,7 @@ macro_rules! make_lazy_format {
 /// elements in a list, check out [joinery](/joinery).
 #[macro_export]
 macro_rules! lazy_format {
-    // Trivial formatter: just write the pattern
+    // Trivial formatter: just write the pattern.
     ($pattern:literal) => {
         $crate::lazy_format!($pattern,)
     };
@@ -431,7 +431,7 @@ macro_rules! semi_lazy_format {
 
     // TODO: Debug implementation with values
     ($pattern:literal $($args:tt)*) => {
-        $crate::semi_lazy_format_impl!($pattern $($args)*)
+        $crate::semi_lazy_format_impl!(@ @ @ $pattern $($args)*)
     };
 }
 
@@ -440,9 +440,9 @@ macro_rules! semi_lazy_format {
 #[macro_export]
 macro_rules! semi_lazy_format_impl {
     (
-        $({ $positional_value:ident })*
-        $({ = $keyed_name:ident $keyed_value:ident })*
-        $pattern:literal $(,)?
+        @ $({ $positional_value:ident })*
+        @ $({ $keyed_name:ident = $keyed_value:ident })*
+        @ $pattern:literal $(,)?
     ) => {
         $crate::lazy_format!(
             $pattern,
@@ -452,50 +452,38 @@ macro_rules! semi_lazy_format_impl {
     };
 
     (
-        $({ $positional_value:ident })*
-        $({ = $keyed_name:ident $keyed_value:ident })*
-        $pattern:literal,
+        @ $({ $positional_value:ident })*
+        @ $({ $keyed_name:ident = $keyed_value:ident })*
+        @ $pattern:literal,
         $name:ident = $value:expr
-    ) => {
-        $crate::semi_lazy_format_impl!(
-            $({ $positional_value })*
-            $({ = $keyed_name $keyed_value })*
-            $pattern,
-            $name = $value,
-        )
-    };
-    // Important: the `name = value` variants of this macro definition must
-    // come first, because "name = value" is a valid rust expr
-    (
-        $({ $positional_value:ident })*
-        $({ = $keyed_name:ident $keyed_value:ident })*
-        $pattern:literal,
-        $name:ident = $value:expr, $($tail:tt)*
+        $(, $tail_name:ident = $tail_value:expr)* $(,)?
     ) => {{
         let value = $value;
 
         $crate::semi_lazy_format_impl!(
-            $({ $positional_value })*
-            $({ = $keyed_name $keyed_value })*
-            { = $name value }
-            $pattern,
-            $($tail)*
+            @ $({ $positional_value })*
+            @ $({ $keyed_name = $keyed_value })* { $name = value }
+            @ $pattern
+            $(, $tail_name = $tail_value)*
         )
     }};
 
-    ($({ $positional_value:ident })* $pattern:literal, $value:expr) => {
-        $crate::semi_lazy_format_impl!($({ $positional_value })* $pattern, $value, )
-    };
-
     // The trick here is to use a hygenic identifier. The `value` name used in
     // this step of the evaluation is considered distinct from the other ones.
-    ($({ $positional_value:ident })* $pattern:literal, $value:expr, $($tail:tt)*) => {{
+    (
+        @ $({ $positional_value:ident })*
+        @ $({ $keyed_name:ident = $keyed_value:ident })*
+        @ $pattern:literal,
+        $value:expr
+        $(, $($tail:tt)*)?
+    ) => {{
         let value = $value;
+
         $crate::semi_lazy_format_impl!(
-            $({ $positional_value })*
-            { value }
-            $pattern,
-            $($tail)*
+            @ $({ $positional_value })* { value }
+            @ $({ $keyed_name = $keyed_value })*
+            @ $pattern
+            $(, $($tail)*)?
         )
     }};
 }
@@ -528,8 +516,18 @@ mod semi_lazy_format_syntax_tests {
     }
 
     #[test]
+    fn test_one_arg_trailing_comma() {
+        let _result = semi_lazy_format!("{}!", "Hello, World",);
+    }
+
+    #[test]
     fn test_two_args() {
         let _result = semi_lazy_format!("{}, {}!", "Hello", "World");
+    }
+
+    #[test]
+    fn test_two_args_trailing_comma() {
+        let _result = semi_lazy_format!("{}, {}!", "Hello", "World",);
     }
 
     #[test]
@@ -538,13 +536,28 @@ mod semi_lazy_format_syntax_tests {
     }
 
     #[test]
+    fn test_one_named_arg_trailing_comma() {
+        let _result = semi_lazy_format!("{text}!", text = "Hello, World",);
+    }
+
+    #[test]
     fn test_two_named_args() {
         let _result = semi_lazy_format!("{h}, {w}!", h = "Hello", w = "World");
     }
 
     #[test]
+    fn test_two_named_args_trailing_comma() {
+        let _result = semi_lazy_format!("{h}, {w}!", h = "Hello", w = "World",);
+    }
+
+    #[test]
     fn test_mixed_args() {
         let _result = semi_lazy_format!("{}, {w}!", "Hello", w = "World");
+    }
+
+    #[test]
+    fn test_mixed_args_trailing_comma() {
+        let _result = semi_lazy_format!("{}, {w}!", "Hello", w = "World",);
     }
 
     #[test]
@@ -557,7 +570,7 @@ mod semi_lazy_format_syntax_tests {
             4,
             5,
             a = 10,
-            b = 20
+            b = 20,
         );
     }
 }
