@@ -116,15 +116,19 @@ macro_rules! make_lazy_format {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! impl_horrorshow_for {
-    $($LazyFormat:ident) => {
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::Render for $LazyFormat<F> {
+    ($LazyFormat:ident) => {
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::Render
+            for $LazyFormat<F>
+        {
             #[inline]
             fn render(&self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
                 write!(tmpl, "{}", self)
             }
         }
 
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderMut for $LazyFormat<F> {
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderMut
+            for $LazyFormat<F>
+        {
             #[inline]
             fn render_mut(&mut self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
                 use ::horrorshow::Render;
@@ -133,18 +137,20 @@ macro_rules! impl_horrorshow_for {
             }
         }
 
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderOnce for $LazyFormat<F> {
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderOnce
+            for $LazyFormat<F>
+        {
             #[inline]
             fn render_once(self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>)
             where
-                Self: Sized
+                Self: Sized,
             {
                 use ::horrorshow::Render;
 
                 self.render(tmpl)
             }
         }
-    }
+    };
 }
 
 #[cfg(not(feature = "horrorshow"))]
