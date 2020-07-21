@@ -122,7 +122,10 @@ macro_rules! make_lazy_format {
         #[cfg(feature="horrorshow")]
         impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderOnce for LazyFormat<F> {
             #[inline]
-            fn render_once(self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
+            fn render_once(self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>)
+            where
+                Self: Sized
+            {
                 use ::horrorshow::Render;
 
                 self.render(tmpl)
