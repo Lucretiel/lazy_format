@@ -101,16 +101,30 @@ macro_rules! make_lazy_format {
             }
         }
 
-        #[cfg(feature="horrorshow")]
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::Render for LazyFormat<F> {
+        $crate::impl_horrorshow_for!{LazyFormat}
+
+        LazyFormat(#[inline] move |$fmt: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
+            $write
+        })
+    }}
+}
+
+// Because macros are *entirely* evaluated in the calling context, we have to
+// split this out to ensure that the `[cfg(feature)]` is evaluated in the context
+// of *this* crate, now our user's.
+#[cfg(feature = "horrorshow")]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! impl_horrorshow_for {
+    $($LazyFormat:ident) => {
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::Render for $LazyFormat<F> {
             #[inline]
             fn render(&self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
                 write!(tmpl, "{}", self)
             }
         }
 
-        #[cfg(feature="horrorshow")]
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderMut for LazyFormat<F> {
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderMut for $LazyFormat<F> {
             #[inline]
             fn render_mut(&mut self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
                 use ::horrorshow::Render;
@@ -119,8 +133,7 @@ macro_rules! make_lazy_format {
             }
         }
 
-        #[cfg(feature="horrorshow")]
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderOnce for LazyFormat<F> {
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderOnce for $LazyFormat<F> {
             #[inline]
             fn render_once(self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>)
             where
@@ -131,11 +144,14 @@ macro_rules! make_lazy_format {
                 self.render(tmpl)
             }
         }
+    }
+}
 
-        LazyFormat(#[inline] move |$fmt: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
-            $write
-        })
-    }}
+#[cfg(not(feature = "horrorshow"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! impl_horrorshow_for {
+    ($LazyFormat:ident) => {};
 }
 
 /// Lazily format something. Essentially the same as

@@ -243,6 +243,7 @@ mod semi_lazy_format {
 #[cfg(feature = "horrorshow")]
 mod horrorshow {
     use horrorshow::prelude::*;
+    use horrorshow::{html, owned_html};
     use lazy_format::lazy_format;
     use std::string::ToString;
 
@@ -251,7 +252,7 @@ mod horrorshow {
         let data = "Hello & Goodbye".to_string();
         let content = lazy_format!("Content in angles: <{}>", data);
 
-        let html = horrorshow::owned_html! {
+        let html = owned_html! {
             div {
                 h1: content;
             }
@@ -264,5 +265,57 @@ mod horrorshow {
             html_string,
             "<div><h1>Content in angles: &lt;Hello &amp; Goodbye&gt;</h1></div>"
         );
+    }
+
+    #[test]
+    fn test_in_render() {
+        struct DemoRender<T: Render> {
+            slug: &'static str,
+            question: &'static str,
+            answer: T,
+        };
+
+        impl<T: Render> Render for DemoRender<T> {
+            fn render<'a>(&self, tmpl: &mut TemplateBuffer<'a>) {
+                let link = lazy_format!("#{}", self.slug);
+
+                tmpl << html! {
+                    dt(class="faq-question", id=self.slug) {
+                        strong: self.question;
+                        a(class="hoverlink", href=link) {
+                            i(class="fas fas-link")
+                        }
+                    }
+                    dd(class="faq-answer"): &self.answer;
+                }
+            }
+        }
+
+        impl<T: Render> RenderMut for DemoRender<T> {
+            fn render_mut<'a>(&mut self, tmpl: &mut TemplateBuffer<'a>) {
+                self.render(tmpl)
+            }
+        }
+
+        impl<T: Render> RenderOnce for DemoRender<T> {
+            fn render_once<'a>(self, tmpl: &mut TemplateBuffer<'a>)
+            where
+                Self: Sized,
+            {
+                self.render(tmpl)
+            }
+        }
+
+        let x = DemoRender {
+            slug: "a-b-c",
+            question: "A B C",
+            answer: "Hello, World!",
+        };
+
+        let r = owned_html! {
+            div {
+                :x;
+            }
+        };
     }
 }
