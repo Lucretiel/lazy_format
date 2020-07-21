@@ -9,8 +9,8 @@ before_script:
   - rustup component add clippy
 
 script:
-  - cargo clippy --verbose
-  - cargo test --verbose
+  - cargo clippy --verbose --all-features
+  - cargo test --verbose --all-features
 
 matrix:
   allow_failures:
