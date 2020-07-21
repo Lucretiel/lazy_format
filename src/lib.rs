@@ -32,6 +32,15 @@
 //! let result = html_tag("div", html_tag("p", "Hello, World!")).to_string();
 //! assert_eq!(result, "<div><p>Hello, World!</p></div>");
 //! ```
+//!
+//! # Features
+//!
+//! ## horrorshow
+//!
+//! horrorshow is a macro-based HTML templating library. If the horrorshow feature
+//! is enabled, `lazy_format` objects will implement `horrorshow::Render`,
+//! allowing them to be used in horrorshow templates. The formatted content will
+//! be HTML-escaped by horrorshow.
 
 /// Low level constructor for lazy format instances. Create a lazy formatter
 /// with a custom closure as its
@@ -89,6 +98,34 @@ macro_rules! make_lazy_format {
             #[inline]
             fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 (self.0)(f)
+            }
+        }
+
+        #[cfg(feature="horrorshow")]
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::Render for LazyFormat<F> {
+            #[inline]
+            fn render(&self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
+                write!(tmpl, "{}", self)
+            }
+        }
+
+        #[cfg(feature="horrorshow")]
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderMut for LazyFormat<F> {
+            #[inline]
+            fn render_mut(&mut self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
+                use ::horrorshow::Render;
+
+                self.render(tmpl)
+            }
+        }
+
+        #[cfg(feature="horrorshow")]
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderOnce for LazyFormat<F> {
+            #[inline]
+            fn render_once(self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
+                use ::horrorshow::Render;
+
+                self.render(tmpl)
             }
         }
 
