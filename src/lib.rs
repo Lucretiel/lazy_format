@@ -51,15 +51,13 @@
 macro_rules! write {
     ($dest:expr, "" $(,)? ) => { ::core::fmt::Result::Ok(()) };
 
-    ($dest:expr, $pattern:literal $(,)? ) => {{
-        let mut dest = $dest;
-        ::core::fmt::Write::write_str(&mut dest, $pattern)
-    }};
+    ($dest:expr, $pattern:literal $(,)? ) => {
+        ::core::fmt::Write::write_str($dest, $pattern)
+    };
 
-    ($dest:expr, $pattern:literal, $($args:tt)+ ) => {{
-        let mut dest = $dest;
-        ::core::fmt::Write::write_fmt(&mut dest, ::core::format_args!($pattern, $($args)+))
-    }}
+    ($dest:expr, $pattern:literal, $($args:tt)+ ) => {
+        ::core::fmt::Write::write_fmt($dest, ::core::format_args!($pattern, $($args)+))
+    }
 }
 
 /// Low level constructor for lazy format instances. Create a lazy formatter
@@ -142,7 +140,7 @@ macro_rules! impl_horrorshow_for {
         {
             #[inline]
             fn render(&self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
-                write!(tmpl, "{}", self)
+                ::core::write!(tmpl, "{}", self)
             }
         }
 
