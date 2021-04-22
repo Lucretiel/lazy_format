@@ -121,7 +121,7 @@ mod lazy_format {
     fn test_result_value_with_lifetime() {
         // This function tests that the return value of lazy_format (and specifically
         // of make_lazy_format) fulfills the lifetime bound
-        fn double_str<'a>(s: &'a str) -> impl Display + 'a {
+        fn double_str(s: &str) -> impl Display + '_ {
             lazy_format!("{}, {}", s, s)
         }
 
@@ -144,6 +144,23 @@ mod lazy_format {
         assert_eq!(describe_optional(Some(4)).to_string(), "Got a 3 or a 4");
         assert_eq!(describe_optional(Some(10)).to_string(), "Got a value: 10");
         assert_eq!(describe_optional(None).to_string(), "Got nothing")
+    }
+
+    #[test]
+    fn test_if_else() {
+        let value = 10;
+
+        // This mostly exists to use "expand macro recursively" to check that
+        // it correctly generates optimized write calls in these branches. A
+        // future version of this test can actually test this by using a Write
+        // adapter.
+        let result = lazy_format!(
+            if value == 10 => ("ten")
+            else if value > 10 => ("value: {}", value)
+            else => ("")
+        );
+
+        assert_eq!(result.to_string(), "ten");
     }
 }
 
@@ -215,11 +232,11 @@ mod semi_lazy_format {
         assert_eq!(emitter.count(), 4);
     }
 
-    /// Test that lazy_format drops lifetimes by evaluating the arguments
+    /// Test that semi_lazy_format drops lifetimes by evaluating the arguments
     /// immediately.
     #[test]
     fn test_dropped_lifetime() {
-        fn get_value<'a>(value: &'a str) -> impl Display {
+        fn get_value(value: &str) -> impl Display + 'static {
             semi_lazy_format!("{} {a}", String::from(value), a = String::from(value))
         }
 

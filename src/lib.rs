@@ -42,6 +42,26 @@
 //! allowing them to be used in horrorshow templates. The formatted content will
 //! be HTML-escaped by horrorshow.
 
+/// Smarter write macro. Encodes some common patterns, such as writing an
+/// empty string being a no-op. Used in the more complex lazy-format
+/// operations, like conditionals, where writing only strings or empty strings,
+/// is common.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! write {
+    ($dest:expr, "" $(,)? ) => { ::core::fmt::Result::Ok(()) };
+
+    ($dest:expr, $pattern:literal $(,)? ) => {{
+        let mut dest = $dest;
+        ::core::fmt::Write::write_str(&mut dest, $pattern)
+    }};
+
+    ($dest:expr, $pattern:literal, $($args:tt)+ ) => {{
+        let mut dest = $dest;
+        ::core::fmt::Write::write_fmt(&mut dest, ::core::format_args!($pattern, $($args)+))
+    }}
+}
+
 /// Low level constructor for lazy format instances. Create a lazy formatter
 /// with a custom closure as its
 /// [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
@@ -353,7 +373,7 @@ macro_rules! lazy_format {
     // Basic lazy format: collect $args and format via `$pattern` when writing
     // to a destination
     ($pattern:literal $(, $($args:tt)*)?) => {
-        $crate::make_lazy_format!(f => write!(f, $pattern $(, $($args)*)?))
+        $crate::make_lazy_format!(f => $crate::write!(f, $pattern $(, $($args)*)?))
     };
 
     // Conditional lazy format: evaluate a match expression and format based on
@@ -371,7 +391,7 @@ macro_rules! lazy_format {
                 $match_pattern
                 $(| $trailing_pattern)*
                 $(if $guard)?
-                => write!(f, $pattern $($args)*),
+                => $crate::write!(f, $pattern $($args)*),
             )*
         })
     };
@@ -388,11 +408,11 @@ macro_rules! lazy_format {
         else $(=>)? ($else_pattern:literal $($else_args:tt)*)
     ) => {
         $crate::make_lazy_format!(f => if $(let $match $(| $trailing_match)* = )? $condition {
-            write!(f, $pattern $($args)*)
+            $crate::write!(f, $pattern $($args)*)
         } $(else if $(let $elseif_match $(| $elseif_trailing_match)* = )? $elseif_condition {
-            write!(f, $elseif_pattern $($elseif_args)*)
+            $crate::write!(f, $elseif_pattern $($elseif_args)*)
         })* else {
-            write!(f, $else_pattern $($else_args)*)
+            $crate::write!(f, $else_pattern $($else_args)*)
         })
     };
 
@@ -406,7 +426,7 @@ macro_rules! lazy_format {
     (($pattern:literal $($args:tt)*) for $item:ident in $collection:expr) => {
         $crate::make_lazy_format!(f =>
             ::core::iter::IntoIterator::into_iter($collection)
-                .try_for_each(move |$item| write!(f, $pattern $($args)*))
+                .try_for_each(move |$item| $crate::write!(f, $pattern $($args)*))
         )
     };
 }
