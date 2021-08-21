@@ -162,6 +162,12 @@ mod lazy_format {
 
         assert_eq!(result.to_string(), "ten");
     }
+
+    #[test]
+    fn test_loop_underscore() {
+        let result = lazy_format!("Ab" for _ in 0..5);
+        assert_eq!(result.to_string(), "AbAbAbAbAb");
+    }
 }
 
 mod semi_lazy_format {

@@ -415,13 +415,18 @@ macro_rules! lazy_format {
     };
 
     // Looping formatter: format each `$item` in `$collection` with `$pattern`
+    ($pattern:literal for _ in $collection:expr) => {
+        $crate::lazy_format!(($pattern) for _ in $collection)
+    };
+
+    // Looping formatter: format each `$item` in `$collection` with `$pattern`
     ($pattern:literal for $item:ident in $collection:expr) => {
         $crate::lazy_format!(($pattern, $item = $item) for $item in $collection)
     };
 
     // Looping formatter: format each `$item` in `$collection` with the format
     // arguments
-    (($pattern:literal $($args:tt)*) for $item:ident in $collection:expr) => {
+    (($pattern:literal $($args:tt)*) for $item:pat in $collection:expr) => {
         $crate::make_lazy_format!(f =>
             ::core::iter::IntoIterator::into_iter($collection)
                 .try_for_each(move |$item| $crate::write!(f, $pattern $($args)*))
