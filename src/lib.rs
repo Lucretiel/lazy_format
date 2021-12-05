@@ -52,7 +52,12 @@ macro_rules! write {
     ($dest:expr, "" $(,)? ) => { ::core::fmt::Result::Ok(()) };
 
     ($dest:expr, $pattern:literal $(,)? ) => {
-        ::core::fmt::Write::write_str($dest, $pattern)
+        // In release mode, this can be detected at compile time
+        if $pattern.bytes().any(|b| b == b'{') {
+            ::core::fmt::Write::write_fmt($dest, ::core::format_args!($pattern))
+        } else {
+            ::core::fmt::Write::write_str($dest, $pattern)
+        }
     };
 
     ($dest:expr, $pattern:literal, $($args:tt)+ ) => {
@@ -83,7 +88,7 @@ macro_rules! write {
 ///
 /// let data = vec![1, 2, 3, 4, 5];
 ///
-/// let comma_separated = make_lazy_format!(f => {
+/// let comma_separated = make_lazy_format!(|f| {
 ///     let mut iter = data.iter();
 ///     match iter.next() {
 ///         None => Ok(()),
@@ -100,31 +105,41 @@ macro_rules! write {
 /// ```
 #[macro_export]
 macro_rules! make_lazy_format {
-    ($fmt:ident => $write:expr) => {{
+    (|$fmt:ident| $write:expr) => {{
         #[derive(Clone, Copy)]
         struct LazyFormat<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result>(F);
 
         // TODO: customize Debug impl for semi_lazy_format to include value
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::core::fmt::Debug for LazyFormat<F> {
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::core::fmt::Debug
+            for LazyFormat<F>
+        {
             #[inline]
             fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-                f.write_str(concat!("make_lazy_format!(", stringify!( $fmt => $write ), ")"))
+                f.write_str(concat!(
+                    "make_lazy_format!(",
+                    stringify!(|$fmt| $write),
+                    ")"
+                ))
             }
         }
 
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::core::fmt::Display for LazyFormat<F> {
+        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::core::fmt::Display
+            for LazyFormat<F>
+        {
             #[inline]
             fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 (self.0)(f)
             }
         }
 
-        $crate::impl_horrorshow_for!{LazyFormat}
+        $crate::impl_horrorshow_for! {LazyFormat}
 
-        LazyFormat(#[inline] move |$fmt: &mut ::core::fmt::Formatter| -> ::core::fmt::Result {
-            $write
-        })
-    }}
+        LazyFormat(move |$fmt: &mut ::core::fmt::Formatter| -> ::core::fmt::Result { $write })
+    }};
+
+    ($fmt:ident => $write:expr) => {
+        $crate::make_lazy_format!(|$fmt| $write)
+    };
 }
 
 // Because macros are *entirely* evaluated in the calling context, we have to

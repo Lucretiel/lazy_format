@@ -61,6 +61,12 @@ mod lazy_format {
     }
 
     #[test]
+    fn no_args_with_curlies() {
+        let result = lazy_format!("{{ braces }}").to_string();
+        assert_eq!(result, "{ braces }")
+    }
+
+    #[test]
     fn ensure_lazy() {
         let emitter = &ValueEmitter::new();
 
