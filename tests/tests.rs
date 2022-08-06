@@ -27,7 +27,7 @@ impl ValueEmitter {
 
     fn next(&self) -> String {
         self.count.set(self.count.get() + 1);
-        return format!("{}", self.count.get());
+        format!("{}", self.count.get())
     }
 
     fn count(&self) -> usize {
@@ -173,6 +173,14 @@ mod lazy_format {
     fn test_loop_underscore() {
         let result = lazy_format!("Ab" for _ in 0..5);
         assert_eq!(result.to_string(), "AbAbAbAbAb");
+    }
+
+    #[test]
+    fn test_contextual_loop() {
+        let value = 10;
+        let pairs = [('a', 'b'), ('c', 'd')];
+        let result = lazy_format!("{value} {left} {right}, " for &(left, right) in &pairs);
+        assert_eq!(result.to_string(), "10 a b, 10 c d, ")
     }
 }
 
