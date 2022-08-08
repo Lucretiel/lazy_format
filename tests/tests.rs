@@ -140,9 +140,9 @@ mod lazy_format {
     fn test_if_let() {
         fn describe_optional(value: Option<isize>) -> impl Display {
             lazy_format!(
-                if let Some(3) | Some(4) = value => ("Got a 3 or a 4")
-                else if let | Some(x) = value => ("Got a value: {}", x)
-                else => ("Got nothing")
+                if let Some(3) | Some(4) = value => "Got a 3 or a 4"
+                else if let Some(x) = value => "Got a value: {x}"
+                else => "Got nothing"
             )
         }
 
@@ -161,9 +161,9 @@ mod lazy_format {
         // future version of this test can actually test this by using a Write
         // adapter.
         let result = lazy_format!(
-            if value == 10 => ("ten")
+            if value == 10 => "ten"
             else if value > 10 => ("value: {}", value)
-            else => ("")
+            else => ""
         );
 
         assert_eq!(result.to_string(), "ten");

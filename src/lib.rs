@@ -74,8 +74,8 @@ handling both cases.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! write_tt {
-    ($dest:expr, $pattern:literal) => ($crate::write!($dest, $pattern));
-    ($dest:expr, ($pattern:literal $($args:tt)*)) => ($crate::write!($dest, $pattern $($args)*));
+    ($dest:expr, $pattern:literal) => { $crate::write!($dest, $pattern) };
+    ($dest:expr, ($pattern:literal $($args:tt)*)) => { $crate::write!($dest, $pattern $($args)*) };
 }
 
 /// Low level constructor for lazy format instances. Create a lazy formatter
