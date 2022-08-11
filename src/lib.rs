@@ -9,11 +9,12 @@
 #![no_std]
 
 /*!
-[`lazy_format`] is a [`format!`]-style macros which lazily format their arguments.
-That is, rather than immediatly formatting them into a [`String`] (which is
-what [`format!`] does), it captures its arguments and returns an opaque struct
-with a [`Display`] implementation, so that the actual formatting can happen
-directly into its final destination buffer (such as a file or string).
+[`lazy_format!`] is a [`format!`]-style macro which lazily formats its
+arguments. That is, rather than immediatly formatting them into a [`String`]
+(which is what [`format!`] does), it captures its arguments and returns an
+opaque struct with a [`Display`] implementation, so that the actual formatting
+can happen directly into its final destination buffer (such as a file or
+string).
 
 ```
 use std::fmt::Display;
