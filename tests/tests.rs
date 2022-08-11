@@ -219,31 +219,3 @@ mod lazy_format {
         assert_eq!(output.to_string(), "1 2 3 4 ");
     }
 }
-
-#[cfg(feature = "horrorshow")]
-mod horrorshow {
-    use horrorshow::owned_html;
-    use horrorshow::prelude::*;
-    use lazy_format::lazy_format;
-    use std::string::ToString;
-
-    #[test]
-    fn test_horrorshow() {
-        let data = "Hello & Goodbye".to_string();
-        let content = lazy_format!("Content in angles: <{}>", data);
-
-        let html = owned_html! {
-            div {
-                h1: content;
-            }
-        };
-
-        let mut html_string = String::new();
-        html.write_to_string(&mut html_string).unwrap();
-
-        assert_eq!(
-            html_string,
-            "<div><h1>Content in angles: &lt;Hello &amp; Goodbye&gt;</h1></div>"
-        );
-    }
-}
