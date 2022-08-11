@@ -8,44 +8,38 @@
 
 #![no_std]
 
-//! lazy_format is a collection of
-//! [`format!`](https://doc.rust-lang.org/std/macro.format.html)-style macros which lazily
-//! formatting their arguments its arguments. That is, rather than immediatly
-//! formatting them into a [`String`](https://doc.rust-lang.org/std/string/struct.String.html)
-//! (which is what [`format!`](https://doc.rust-lang.org/std/macro.format.html))
-//! does, it captures its arguments and returns an opaque struct with a
-//! [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
-//! implementation, so that the actual formatting can happen directly into its
-//! final destination buffer (such as a file or string).
-//!
-//! ```
-//! use std::fmt::Display;
-//!
-//! use lazy_format::prelude::*;
-//!
-//! // NOTE: This is obviously profoundly unsafe and you should never actually
-//! // render HTML without escape guards, code injection prevention, etc.
-//! fn html_tag<'a>(tag: &'a str, content: impl Display + 'a) -> impl Display + 'a {
-//!     lazy_format!("<{tag}>{content}</{tag}>", tag=tag, content=content)
-//! }
-//!
-//! let result = html_tag("div", html_tag("p", "Hello, World!")).to_string();
-//! assert_eq!(result, "<div><p>Hello, World!</p></div>");
-//! ```
-//!
-//! # Features
-//!
-//! ## horrorshow
-//!
-//! horrorshow is a macro-based HTML templating library. If the horrorshow feature
-//! is enabled, `lazy_format` objects will implement `horrorshow::Render`,
-//! allowing them to be used in horrorshow templates. The formatted content will
-//! be HTML-escaped by horrorshow.
+/*!
+[`lazy_format`] is a [`format!`]-style macros which lazily format their arguments.
+That is, rather than immediatly formatting them into a [`String`] (which is
+what [`format!`] does), it captures its arguments and returns an opaque struct
+with a [`Display`] implementation, so that the actual formatting can happen
+directly into its final destination buffer (such as a file or string).
 
-/// Smarter write macro. Encodes some common patterns, such as writing an
-/// empty string being a no-op. Used in the more complex lazy-format
-/// operations, like conditionals, where writing only strings or empty strings,
-/// is common.
+```
+use std::fmt::Display;
+
+use lazy_format::prelude::*;
+
+// NOTE: This is obviously profoundly unsafe and you should never actually
+// render HTML without escape guards, code injection prevention, etc.
+fn html_tag<'a>(tag: &'a str, content: impl Display + 'a) -> impl Display + 'a {
+    lazy_format!("<{tag}>{content}</{tag}>")
+}
+
+let result = html_tag("div", html_tag("p", "Hello, World!")).to_string();
+assert_eq!(result, "<div><p>Hello, World!</p></div>");
+```
+
+[`format!`]: https://doc.rust-lang.org/std/macro.format.html
+[`Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+[`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+*/
+
+/**
+Smarter write macro. Encodes some common patterns, such as writing an empty
+string being a no-op. Used in the more complex lazy-format operations, like
+conditionals, where writing only strings or empty strings, is common.
+*/
 #[macro_export]
 #[doc(hidden)]
 macro_rules! write {
@@ -78,44 +72,46 @@ macro_rules! write_tt {
     ($dest:expr, ($pattern:literal $($args:tt)*)) => { $crate::write!($dest, $pattern $($args)*) };
 }
 
-/// Low level constructor for lazy format instances. Create a lazy formatter
-/// with a custom closure as its
-/// [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
-/// implementation, for complete control over formatting behavior at write time.
-///
-/// [`make_lazy_format!`] is the low-level constructor for lazy format instances.
-/// It is completely customizable, insofar as it allows you to create a custom
-/// [`Display::fmt`](https://doc.rust-lang.org/core/fmt/trait.Display.html#tymethod.fmt)
-/// implementation at the call site.
-///
-/// [`make_lazy_format!`] takes a closure specification as an argument, and creates
-/// a [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html) struct
-/// that captures the local environment in a closure and uses it as the
-/// formatting function.
-///
-/// # Example:
-///
-/// ```
-/// use std::fmt::Display;
-/// use lazy_format::make_lazy_format;
-///
-/// let data = vec![1, 2, 3, 4, 5];
-///
-/// let comma_separated = make_lazy_format!(|f| {
-///     let mut iter = data.iter();
-///     match iter.next() {
-///         None => Ok(()),
-///         Some(first) => {
-///             write!(f, "{}", first)?;
-///             iter.try_for_each(|value| write!(f, ", {}", value))
-///         }
-///     }
-/// });
-///
-/// let result = comma_separated.to_string();
-///
-/// assert_eq!(result, "1, 2, 3, 4, 5");
-/// ```
+/**
+Low level constructor for lazy format instances. Create a lazy formatter with a
+custom closure as its [`Display`] implementation, for complete control over
+formatting behavior at write time.
+
+[`make_lazy_format!`] is the low-level constructor for lazy format instances. It
+is completely customizable, insofar as it allows you to create a custom
+[`Display::fmt`] implementation at the call site.
+
+[`make_lazy_format!`] takes a closure as an argument, and creates a [`Display`]
+struct that captures the local environment in a closure and uses it as the
+formatting function.
+
+# Example:
+
+```
+use std::fmt::Display;
+use lazy_format::make_lazy_format;
+
+let data = vec![1, 2, 3, 4, 5];
+
+let comma_separated = make_lazy_format!(|f| {
+    let mut iter = data.iter();
+    match iter.next() {
+        None => Ok(()),
+        Some(first) => {
+            write!(f, "{}", first)?;
+            iter.try_for_each(|value| write!(f, ", {}", value))
+        }
+    }
+});
+
+let result = comma_separated.to_string();
+
+assert_eq!(result, "1, 2, 3, 4, 5");
+```
+
+[`Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+[`Display::fmt`]: https://doc.rust-lang.org/core/fmt/trait.Display.html#tymethod.fmt
+*/
 #[macro_export]
 macro_rules! make_lazy_format {
     (|$fmt:ident| $write:expr) => {{
@@ -145,94 +141,31 @@ macro_rules! make_lazy_format {
             }
         }
 
-        $crate::impl_horrorshow_for! {LazyFormat}
-
         LazyFormat(move |$fmt: &mut ::core::fmt::Formatter| -> ::core::fmt::Result { $write })
     }};
-
-    // Retained for backwards compatibility, will remove in 2.0
-    ($fmt:ident => $write:expr) => {
-        $crate::make_lazy_format!(|$fmt| $write)
-    };
-}
-
-// Because macros are *entirely* evaluated in the calling context, we have to
-// split this out to ensure that the `[cfg(feature)]` is evaluated in the context
-// of *this* crate, now our user's.
-#[cfg(feature = "horrorshow")]
-#[doc(hidden)]
-#[macro_export]
-macro_rules! impl_horrorshow_for {
-    ($LazyFormat:ident) => {
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::Render
-            for $LazyFormat<F>
-        {
-            #[inline]
-            fn render(&self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
-                ::core::write!(tmpl, "{}", self)
-            }
-        }
-
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderMut
-            for $LazyFormat<F>
-        {
-            #[inline]
-            fn render_mut(&mut self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>) {
-                use ::horrorshow::Render;
-
-                self.render(tmpl)
-            }
-        }
-
-        impl<F: Fn(&mut ::core::fmt::Formatter) -> ::core::fmt::Result> ::horrorshow::RenderOnce
-            for $LazyFormat<F>
-        {
-            #[inline]
-            fn render_once(self, tmpl: &mut ::horrorshow::TemplateBuffer<'_>)
-            where
-                Self: Sized,
-            {
-                use ::horrorshow::Render;
-
-                self.render(tmpl)
-            }
-        }
-    };
-}
-
-#[cfg(not(feature = "horrorshow"))]
-#[doc(hidden)]
-#[macro_export]
-macro_rules! impl_horrorshow_for {
-    ($LazyFormat:ident) => {};
 }
 
 /**
-Lazily format something. Essentially the same as
-[`format!`](https://doc.rust-lang.org/std/macro.format.html), except that
+Lazily format something. Essentially the same as [`format!`], except that
 instead of formatting its arguments to a string, it captures them in an opaque
 struct, which can be formatted later. This allows you to build up formatting
 operations without any intermediary allocations or extra formatting calls. Also
 supports lazy conditional and looping constructs.
 
 The return value of this macro is left deliberately unspecified and
-undocumented. The most important this about it is its
-[`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
-implementation, which executes the deferred formatting operation. It
-also provides a [`Debug`](https://doc.rust-lang.org/std/fmt/trait.Debug.html)
-implementation, which simply prints the [`lazy_format!`]`(...)` call without
-evaluating any of its arguments, as well as [`Clone`] and [`Copy`] if those
-traits are available in the captured context.
+undocumented. The most important this about it is its [`Display`]
+implementation, which executes the deferred formatting operation. It also
+provides a [`Debug`] implementation, which simply prints the
+[`lazy_format!`]`(...)` call without evaluating any of its arguments, as well
+as [`Clone`] and [`Copy`] if those traits are available in the captured
+context.
 
 Note that this macro is completely lazy; it captures the expressions to
 be formatted in the struct and doesn't evaluate them until the struct is
-actually written to a
-[`String`](https://doc.rust-lang.org/std/string/struct.String.html) or
-[`File`](https://doc.rust-lang.org/std/fs/struct.File.html) or or other
-writable destination. This means that the argument expression will be
-evaluated *every* time the instance is written, which may not be what you
-want. See [`semi_lazy_format!`] for a macro which eagerly evaluates its
-arguments but lazily does the final formatting.
+actually written to a [`String`] or [`File`] or or other writable destination.
+This means that the argument expression will be evaluated *every* time the
+instance is written, which may not be what you want; be sure to eagerly perform
+any 1-time calculations you want to before calling `lazy_format!`.
 
 # Basic example:
 
@@ -321,10 +254,10 @@ fn get_number(num: usize) -> impl Display {
         0 => "Zero",
         1 => "One",
         2 => "Two",
-        | 3 => "Three",
+        3 => "Three",
         4 | 5 => "Four or five",
         value if value % 2 == 0 => ("A large even number: {}", value),
-        value => ("An unrecognized number: {v}", v = value),
+        value => "An unrecognized number: {value}",
     })
 }
 
@@ -402,8 +335,7 @@ assert_eq!(describe_optional_number(None).to_string(), "It's not a number!");
 
 # Looping formatting
 
-`lazy_format!` supports formatting elements in a collection with a loop.
-There are a few supported syntaxes:
+`lazy_format!` supports formatting elements in a collection with a loop:
 
 ```
 use std::fmt::Display;
@@ -426,30 +358,36 @@ Note that these looping formatters are not suitable for doing something like
 a comma separated list, since they'll apply the formatting to all elements.
 For a lazy string joining library, which only inserts separators between
 elements in a list, check out [joinery](/joinery).
+
+[`format!`]: https://doc.rust-lang.org/std/macro.format.html
+[`Display`]: https://doc.rust-lang.org/std/fmt/trait.Display.html
+[`Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+[`String`]: https://doc.rust-lang.org/std/string/struct.String.html
+[`File`]: https://doc.rust-lang.org/std/fs/struct.File.html
 */
 #[macro_export]
 macro_rules! lazy_format {
     // Basic lazy format: collect $args and format via `$pattern` when writing
     // to a destination
     ($pattern:literal $(, $($args:tt)*)?) => {
-        $crate::make_lazy_format!(f => $crate::write!(f, $pattern $(, $($args)*)?))
+        $crate::make_lazy_format!(|f| $crate::write!(f, $pattern $(, $($args)*)?))
     };
 
     // Conditional lazy format: evaluate a match expression and format based on
     // the matching arm
     (match ($condition:expr) {
-        $(
+        $($(
             $match_pattern:pat
             $(if $guard:expr)?
             => $output:tt
-        ),* $(,)?
+        ),+ $(,)?)?
     }) => {
         $crate::make_lazy_format!(|f| match $condition {
-            $(
+            $($(
                 $match_pattern
                 $(if $guard)?
                 => $crate::write_tt!(f, $output),
-            )*
+            )+)?
         })
     };
 
@@ -462,25 +400,27 @@ macro_rules! lazy_format {
         $(else if $(let $elseif_match:pat = )? $elseif_condition:expr => $elseif_output:tt)*
         $(else => $else_output:tt)?
     ) => {
-        $crate::make_lazy_format!(f => if $(let $match = )? $condition {
-            $crate::write_tt!(f, $output)
-        }
-        $(else if $(let $elseif_match = )? $elseif_condition {
-            $crate::write_tt!(f, $elseif_output)
-        })*
-        else {
-            $( $crate::write_tt!(f, $else_output)?; )?
-            Ok(())
-        })
+        $crate::make_lazy_format!(|f|
+            if $(let $match = )? $condition {
+                $crate::write_tt!(f, $output)
+            }
+            $(else if $(let $elseif_match = )? $elseif_condition {
+                $crate::write_tt!(f, $elseif_output)
+            })*
+            else {
+                $( $crate::write_tt!(f, $else_output)?; )?
+                Ok(())
+            }
+        )
     };
 
     // Looping formatter: format each `$item` in `$collection` with the format
     // arguments
     ($output:tt for $item:pat in $collection:expr) => {
-        $crate::make_lazy_format!(
-            |f| ::core::iter::IntoIterator::into_iter($collection)
-                .try_for_each(move |$item| $crate::write_tt!(f, $output))
-        )
+        $crate::make_lazy_format!(|f| {
+            let mut iter = ::core::iter::IntoIterator::into_iter($collection);
+            ::core::iter::Iterator::try_for_each(&mut iter, |$item| $crate::write_tt!(f, $output))
+        })
     };
 }
 

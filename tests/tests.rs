@@ -4,7 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Copyright 2019 Nathan West
+// Copyright 2019-2022 Nathan West
 
 #![cfg(test)]
 
@@ -181,6 +181,42 @@ mod lazy_format {
         let pairs = [('a', 'b'), ('c', 'd')];
         let result = lazy_format!("{value} {left} {right}, " for &(left, right) in &pairs);
         assert_eq!(result.to_string(), "10 a b, 10 c d, ")
+    }
+
+    /// Test that the for loop version of lazy_format still works when the
+    /// iterator type still has a try_for_each method, for some reason.
+    #[test]
+    fn test_bad_iterator() {
+        #[derive(Copy, Clone)]
+        struct Collection<'a> {
+            slice: &'a [i32],
+        }
+
+        impl<'a> Iterator for Collection<'a> {
+            type Item = &'a i32;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                self.slice.split_first().map(|(head, tail)| {
+                    self.slice = tail;
+                    head
+                })
+            }
+        }
+
+        impl<'a> Collection<'a> {
+            pub fn new(slice: &'a [i32]) -> Self {
+                Self { slice }
+            }
+
+            #[allow(dead_code)]
+            pub fn try_for_each<T>(&mut self, _body: impl FnMut(&'a i32) -> T) -> T {
+                panic!("This shouldn't be called")
+            }
+        }
+
+        let collection = Collection::new(&[1, 2, 3, 4]);
+        let output = lazy_format!("{item} " for item in collection);
+        assert_eq!(output.to_string(), "1 2 3 4 ");
     }
 }
 

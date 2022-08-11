@@ -12,6 +12,3 @@ categories = ["no-std", "rust-patterns", "value-formatting"]
 [badges]
 travis-ci = { repository = "Lucretiel/lazy_format" }
 maintenance = { status = "actively-developed" }
-
-[dependencies]
-horrorshow = { version = "0.8.3", optional = true }
