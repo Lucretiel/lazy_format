@@ -16,7 +16,7 @@ use joinery::JoinableIterator;
 fn main() {
 	let result = (0..10)
 		.map(|value| lazy_format!("\t'{}'", value))
-		.join_with(",\n")
+		.join_with("\n")
 		.to_string();
 
 	assert_eq!(result,
