@@ -21,7 +21,7 @@ use std::fmt::Display;
 
 use lazy_format::prelude::*;
 
-// NOTE: This is obviously profoundly unsafe and you should never actually
+// NOTE: This is profoundly unsafe and you should never actually
 // render HTML without escape guards, code injection prevention, etc.
 fn html_tag<'a>(tag: &'a str, content: impl Display + 'a) -> impl Display + 'a {
     lazy_format!("<{tag}>{content}</{tag}>")
