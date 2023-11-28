@@ -47,8 +47,10 @@ macro_rules! write {
     ($dest:expr, "" $(,)? ) => { ::core::fmt::Result::Ok(()) };
 
     ($dest:expr, $pattern:literal $(,)? ) => {
-        // In release mode, this can be detected at compile time
-        if $pattern.bytes().any(|b| b == b'{') {
+        // In release mode, these can be detected at compile time
+        if $pattern == "" {
+            ::core::fmt::Result::Ok(())
+        } else if $pattern.bytes().any(|b| b == b'{' || b == b'}') {
             ::core::fmt::Write::write_fmt($dest, ::core::format_args!($pattern))
         } else {
             ::core::fmt::Write::write_str($dest, $pattern)
@@ -57,7 +59,7 @@ macro_rules! write {
 
     ($dest:expr, $pattern:literal, $($args:tt)+ ) => {
         ::core::fmt::Write::write_fmt($dest, ::core::format_args!($pattern, $($args)+))
-    }
+    };
 }
 
 /**
@@ -71,6 +73,24 @@ handling both cases.
 macro_rules! write_tt {
     ($dest:expr, $pattern:literal) => { $crate::write!($dest, $pattern) };
     ($dest:expr, ($pattern:literal $($args:tt)*)) => { $crate::write!($dest, $pattern $($args)*) };
+}
+
+/// Test that an empty format string succeeds unconditionally.
+#[test]
+fn test_write_tt_empty_pattern() {
+    use core::fmt;
+
+    struct BadDest;
+
+    impl fmt::Write for BadDest {
+        fn write_str(&mut self, _s: &str) -> fmt::Result {
+            Err(fmt::Error)
+        }
+    }
+
+    write_tt!(&mut BadDest, "").unwrap();
+    write_tt!(&mut BadDest, ("")).unwrap();
+    write_tt!(&mut BadDest, ("",)).unwrap();
 }
 
 /**

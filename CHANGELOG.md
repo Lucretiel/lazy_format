@@ -3,6 +3,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Internal
+
+- Improved detecting of empty format strings
+
 ## 2.0.0
 
 What started as a simple collection of cleanup changes eventually spiraled out to the complete implementation of everything I've been looking to do for `lazy_format` 2.0. In particular, the improvements to `if` necessitated minor but technically backwards incompatible macro changes, which presented the opportunity to make the other backwards incompatible changes, like removing deprecated functionality and simplifying macro definitions. In general, if you're only using `lazy_format` and you aren't using `horrorshow`, you shouldn't experience any breakages in the upgrade.
