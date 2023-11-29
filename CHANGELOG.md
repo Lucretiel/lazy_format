@@ -5,7 +5,13 @@ and this project adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/
 
 ## Unreleased
 
+### Interal
+
 - Inline the compile-time check in `write`, to remove an unwanted export.
+
+### Fixed
+
+- Fixed a bug where `{STYLE}` didn't format correctly.
 
 ## 2.0.2
 
