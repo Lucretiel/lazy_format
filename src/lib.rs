@@ -54,8 +54,9 @@ macro_rules! write {
         }
 
         match {
-            // Need to put this global in a nested scope because otherwise
-            // it leaks out
+            // We want this to be const so that we can guarantee it's computed
+            // at compile time. Need to put the `STYLE` global in a nested
+            // scope because otherwise it leaks out
             const STYLE: Style = match $pattern.as_bytes().split_first() {
                 ::core::option::Option::None => Style::Empty,
                 ::core::option::Option::Some((&(b'}' | b'{'), _)) => Style::Format,
