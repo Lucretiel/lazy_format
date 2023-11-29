@@ -163,10 +163,22 @@ mod lazy_format {
         let result = lazy_format!(
             if value == 10 => "ten"
             else if value > 10 => ("value: {}", value)
-            else => ""
+            else => "small"
         );
 
         assert_eq!(result.to_string(), "ten");
+    }
+
+    #[test]
+    fn test_if_without_else() {
+        let value = 0;
+
+        let result = lazy_format!(
+            if value == 10 => "10"
+            else if value > 10 => "value: {value}"
+        );
+
+        assert_eq!(result.to_string(), "");
     }
 
     #[test]
