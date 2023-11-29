@@ -53,19 +53,23 @@ macro_rules! write {
             Format,
         }
 
-        const STYLE: Style = match $pattern.as_bytes().split_first() {
-            None => Style::Empty,
-            Some((&(b'}' | b'{'), _)) => Style::Format,
-            Some((_, mut s)) => loop {
-                s = match s.split_first() {
-                    None => break Style::Plain,
-                    Some((&(b'}' | b'{'), _)) => break Style::Format,
-                    Some((_, s)) => s,
-                };
-            }
-        };
+        match {
+            // Need to put this global in a nested scope because otherwise
+            // it leaks out
+            const STYLE: Style = match $pattern.as_bytes().split_first() {
+                ::core::option::Option::None => Style::Empty,
+                ::core::option::Option::Some((&(b'}' | b'{'), _)) => Style::Format,
+                ::core::option::Option::Some((_, mut s)) => loop {
+                    s = match s.split_first() {
+                        None => break Style::Plain,
+                        Some((&(b'}' | b'{'), _)) => break Style::Format,
+                        Some((_, s)) => s,
+                    };
+                }
+            };
 
-        match STYLE {
+            STYLE
+        } {
             Style::Empty => ::core::fmt::Result::Ok(()),
             Style::Plain => ::core::fmt::Write::write_str($dest, $pattern),
             Style::Format => ::core::fmt::Write::write_fmt($dest, ::core::format_args!($pattern)),

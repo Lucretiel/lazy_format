@@ -218,4 +218,13 @@ mod lazy_format {
         let output = lazy_format!("{item} " for item in collection);
         assert_eq!(output.to_string(), "1 2 3 4 ");
     }
+
+    #[test]
+    fn test_lazy_format_with_possible_name_collision() {
+        const STYLE: i32 = 10;
+
+        let s = lazy_format!("Value: {STYLE}").to_string();
+
+        assert_eq!(s, "Value: 10");
+    }
 }
