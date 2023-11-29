@@ -87,9 +87,36 @@ fn test_write_tt_empty_pattern() {
         }
     }
 
+    let x = 10;
+
     write_tt!(&mut BadDest, "").unwrap();
     write_tt!(&mut BadDest, ("")).unwrap();
     write_tt!(&mut BadDest, ("",)).unwrap();
+
+    write_tt!(&mut BadDest, "Plain String").unwrap_err();
+    write_tt!(&mut BadDest, "Formatted String: {x}").unwrap_err();
+}
+
+#[test]
+fn test_write_string_pattern() {
+    use core::fmt;
+
+    struct WeirdDest;
+
+    impl fmt::Write for WeirdDest {
+        fn write_str(&mut self, _s: &str) -> fmt::Result {
+            Ok(())
+        }
+
+        fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> fmt::Result {
+            Err(fmt::Error)
+        }
+    }
+
+    let x = 10;
+
+    write_tt!(&mut WeirdDest, "Plain String").unwrap();
+    write_tt!(&mut WeirdDest, "Formatted String: {x}").unwrap_err();
 }
 
 /**
