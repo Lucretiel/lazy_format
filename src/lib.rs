@@ -47,12 +47,28 @@ macro_rules! write {
     ($dest:expr, "" $(,)? ) => { ::core::fmt::Result::Ok(()) };
 
     ($dest:expr, $pattern:literal $(,)? ) => {{
-        const STYLE: $crate::FormatStringStyle = $crate::format_string_style($pattern.as_bytes());
+        enum Style {
+            Empty,
+            Plain,
+            Format,
+        }
+
+        const STYLE: Style = match $pattern.as_bytes().split_first() {
+            None => Style::Empty,
+            Some((&(b'}' | b'{'), _)) => Style::Format,
+            Some((_, mut s)) => loop {
+                s = match s.split_first() {
+                    None => break Style::Plain,
+                    Some((&(b'}' | b'{'), _)) => break Style::Format,
+                    Some((_, s)) => s,
+                };
+            }
+        };
 
         match STYLE {
-            $crate::FormatStringStyle::Empty => ::core::fmt::Result::Ok(()),
-            $crate::FormatStringStyle::Plain => ::core::fmt::Write::write_str($dest, $pattern),
-            $crate::FormatStringStyle::Format => ::core::fmt::Write::write_fmt($dest, ::core::format_args!($pattern)),
+            Style::Empty => ::core::fmt::Result::Ok(()),
+            Style::Plain => ::core::fmt::Write::write_str($dest, $pattern),
+            Style::Format => ::core::fmt::Write::write_fmt($dest, ::core::format_args!($pattern)),
         }
     }};
 
@@ -454,9 +470,11 @@ macro_rules! lazy_format {
             $(else if $(let $elseif_match = )? $elseif_condition {
                 $crate::write_tt!(f, $elseif_output)
             })*
+            $(else if true {
+                $crate::write_tt!(f, $else_output)
+            })?
             else {
-                $( $crate::write_tt!(f, $else_output)?; )?
-                Ok(())
+                ::core::fmt::Result::Ok(())
             }
         )
     };
@@ -469,35 +487,6 @@ macro_rules! lazy_format {
             ::core::iter::Iterator::try_for_each(&mut iter, |$item| $crate::write_tt!(f, $output))
         })
     };
-}
-
-#[doc(hidden)]
-pub enum FormatStringStyle {
-    /// An empty format string
-    Empty,
-
-    /// A string without any {} placeholders
-    Plain,
-
-    /// A string with placeholders
-    Format,
-}
-
-#[doc(hidden)]
-pub const fn format_string_style(s: &[u8]) -> FormatStringStyle {
-    let mut s = match s.split_first() {
-        None => return FormatStringStyle::Empty,
-        Some((&(b'}' | b'{'), _)) => return FormatStringStyle::Format,
-        Some((_, s)) => s,
-    };
-
-    loop {
-        s = match s.split_first() {
-            None => return FormatStringStyle::Plain,
-            Some((&(b'}' | b'{'), _)) => return FormatStringStyle::Format,
-            Some((_, s)) => s,
-        };
-    }
 }
 
 pub mod prelude {
